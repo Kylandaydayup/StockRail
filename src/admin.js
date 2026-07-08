@@ -41,7 +41,7 @@ resetFiltersButton.addEventListener("click", async () => {
 refreshAuditButton.addEventListener("click", () => renderAuditLogs());
 logoutButton.addEventListener("click", async () => {
   await api("/api/logout", { method: "POST", body: {} });
-  location.href = "/login.html";
+  location.href = "/login";
 });
 
 userForm.addEventListener("submit", async (event) => {

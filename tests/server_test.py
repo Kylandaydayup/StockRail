@@ -218,7 +218,7 @@ class StockRailServerTest(unittest.TestCase):
         inviter_cookie = inviter["headers"]["Set-Cookie"].split(";", 1)[0]
         invite = self.request("GET", "/api/invite", cookie=inviter_cookie)
         self.assertEqual(invite["status"], 200, invite)
-        self.assertIn("/login.html?invite=", invite["json"]["inviteLink"])
+        self.assertIn("/login?invite=", invite["json"]["inviteLink"])
 
         invite_code = invite["json"]["inviteCode"]
         invited = self.register_member("invited@example.com", "被邀请人", invite_code)
@@ -308,6 +308,17 @@ class StockRailServerTest(unittest.TestCase):
         with sqlite3.connect(db_path) as conn:
             email = conn.execute("select email from users where username = ?", ("superadmin",)).fetchone()[0]
         self.assertEqual(email, "root@example.com")
+
+    def test_static_clean_routes_and_favicon_are_available(self):
+        login = self.request("GET", "/login")
+        admin = self.request("GET", "/admin")
+        favicon = self.request("GET", "/favicon.svg")
+
+        self.assertEqual(login["status"], 200, login)
+        self.assertIn(b"<title>", login["body"])
+        self.assertEqual(admin["status"], 200, admin)
+        self.assertEqual(favicon["status"], 200, favicon)
+        self.assertEqual(favicon["headers"]["Content-Type"], "image/svg+xml")
 
     def test_superadmin_views_immutable_audit_logs_for_important_operations(self):
         root_cookie = self.login("root", "RootPass123!")

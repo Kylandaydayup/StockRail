@@ -257,7 +257,13 @@ class StockRailApp:
         raise HTTPError(404, "api not found")
 
     def serve_static(self, path):
-        rel_path = "index.html" if path in ("", "/") else path.lstrip("/")
+        clean_routes = {
+            "": "index.html",
+            "/": "index.html",
+            "/login": "login.html",
+            "/admin": "admin.html",
+        }
+        rel_path = clean_routes.get(path, path.lstrip("/"))
         if rel_path.startswith("uploads/"):
             upload_candidate = (self.upload_dir / rel_path.removeprefix("uploads/")).resolve()
             upload_root = self.upload_dir.resolve()
@@ -557,7 +563,7 @@ class StockRailApp:
                 (user["id"],),
             ).fetchall()
         origin = request_origin(headers)
-        invite_link = f"{origin}/login.html?invite={user['invite_code']}" if origin else f"/login.html?invite={user['invite_code']}"
+        invite_link = f"{origin}/login?invite={user['invite_code']}" if origin else f"/login?invite={user['invite_code']}"
         return {
             "inviteCode": user["invite_code"],
             "inviteLink": invite_link,

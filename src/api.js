@@ -22,12 +22,12 @@ export async function requireSession(roles = []) {
   try {
     const { user } = await api("/api/me");
     if (roles.length > 0 && !roles.includes(user.role)) {
-      location.href = "/login.html";
+      location.href = "/login";
       return null;
     }
     return user;
   } catch {
-    location.href = "/login.html";
+    location.href = "/login";
     return null;
   }
 }

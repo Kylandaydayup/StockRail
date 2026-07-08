@@ -33,7 +33,7 @@ form.addEventListener("submit", async (event) => {
         password: data.get("password")
       }
     });
-    location.href = user.role === "member" ? "/" : "/admin.html";
+    location.href = user.role === "member" ? "/" : "/admin";
   } catch (error) {
     errorNode.textContent = error.message;
   }
