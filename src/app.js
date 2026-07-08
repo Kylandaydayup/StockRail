@@ -1,4 +1,5 @@
 import { api, requireSession } from "./api.js";
+import { readAvatarFile } from "./image-upload.js";
 import { validateOrder } from "./storage.js";
 
 const brands = ["皇家", "爱他美", "美素佳儿", "飞鹤", "君乐宝", "其他"];
@@ -11,6 +12,7 @@ const newOrderButton = document.querySelector("#new-order");
 const collapseAllButton = document.querySelector("#collapse-all");
 const quickAddButton = document.querySelector("#quick-add");
 const currentUserButton = document.querySelector("#current-user");
+const avatarFileInput = document.querySelector("#avatar-file");
 
 let itemCounter = 0;
 
@@ -19,6 +21,29 @@ if (currentUser) {
   currentUserButton.innerHTML = userBadge(currentUser);
   addItem();
 }
+
+avatarFileInput.addEventListener("change", async () => {
+  const file = avatarFileInput.files?.[0];
+  if (!file) {
+    return;
+  }
+  clearFieldErrors();
+  try {
+    const payload = await api("/api/me/profile", {
+      method: "PATCH",
+      body: {
+        nickname: currentUser.nickname || currentUser.username,
+        avatarImage: await readAvatarFile(file)
+      }
+    });
+    currentUser.avatarUrl = payload.user.avatarUrl;
+    currentUser.nickname = payload.user.nickname;
+    currentUserButton.innerHTML = userBadge(currentUser);
+    avatarFileInput.value = "";
+  } catch (error) {
+    showErrors({ form: error.message });
+  }
+});
 
 quickAddButton.addEventListener("click", () => addItem());
 collapseAllButton.addEventListener("click", () => {

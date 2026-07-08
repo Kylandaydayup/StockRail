@@ -40,9 +40,10 @@
             <span>昵称</span>
             <input name="nickname" placeholder="默认显示名称" />
           </label>
-          <label>
-            <span>头像 URL</span>
-            <input name="avatarUrl" placeholder="可选，粘贴头像图片地址" />
+          <label class="avatar-upload">
+            <span>头像</span>
+            <input name="avatarFile" type="file" accept="image/png,image/jpeg,image/webp" />
+            <small>选择手机相册里的图片</small>
           </label>
           <p id="register-error" class="form-error"></p>
           <button class="submit-button" type="submit">注册并登录</button>

@@ -1,4 +1,5 @@
 import json
+import base64
 import tempfile
 import unittest
 
@@ -11,6 +12,7 @@ class StockRailServerTest(unittest.TestCase):
         self.app = create_app(
             {
                 "db_path": f"{self.tmp.name}/stockrail.db",
+                "upload_dir": f"{self.tmp.name}/uploads",
                 "superadmin_username": "root",
                 "superadmin_password": "RootPass123!",
                 "session_secret": "test-secret",
@@ -132,6 +134,87 @@ class StockRailServerTest(unittest.TestCase):
         self.assertEqual(response["json"]["user"]["nickname"], "用户昵称A")
         self.assertEqual(response["json"]["user"]["avatarUrl"], "https://example.com/avatar-a.jpg")
         self.assertIn("Set-Cookie", response["headers"])
+
+    def test_register_and_profile_avatar_upload_save_replaceable_image(self):
+        image = "data:image/png;base64," + base64.b64encode(b"first-avatar").decode("ascii")
+        response = self.request(
+            "POST",
+            "/api/register",
+            {
+                "username": "avatar-member",
+                "password": "MemberPass789!",
+                "nickname": "头像用户",
+                "avatarImage": image,
+            },
+        )
+
+        self.assertEqual(response["status"], 201, response)
+        first_url = response["json"]["user"]["avatarUrl"]
+        self.assertTrue(first_url.startswith("/uploads/avatars/"), first_url)
+        with open(f"{self.tmp.name}{first_url}", "rb") as saved:
+            self.assertEqual(saved.read(), b"first-avatar")
+
+        cookie = response["headers"]["Set-Cookie"].split(";", 1)[0]
+        replacement = "data:image/jpeg;base64," + base64.b64encode(b"replacement-avatar").decode("ascii")
+        update = self.request(
+            "PATCH",
+            "/api/me/profile",
+            {"nickname": "新头像用户", "avatarImage": replacement},
+            cookie,
+        )
+
+        self.assertEqual(update["status"], 200, update)
+        self.assertEqual(update["json"]["user"]["nickname"], "新头像用户")
+        replacement_url = update["json"]["user"]["avatarUrl"]
+        self.assertTrue(replacement_url.endswith(".jpg"), replacement_url)
+        with open(f"{self.tmp.name}{replacement_url}", "rb") as saved:
+            self.assertEqual(saved.read(), b"replacement-avatar")
+
+    def test_admin_filters_orders_by_status_delivery_and_keyword(self):
+        root_cookie = self.login("root", "RootPass123!")
+        self.create_user(root_cookie, "member-a", "MemberPass123!", "member")
+        self.create_user(root_cookie, "admin-a", "AdminPass123!", "admin")
+        member_cookie = self.login("member-a", "MemberPass123!")
+        admin_cookie = self.login("admin-a", "AdminPass123!")
+
+        first = self.request(
+            "POST",
+            "/api/orders",
+            {
+                "wechatName": "筛选目标",
+                "deliveryMethod": "自送",
+                "trackingNumbers": "TARGET-001",
+                "totalBoxes": 3,
+                "phone": "13900001111",
+                "items": [{"brand": "皇家", "product": "皇家A2", "quantity": 3}],
+            },
+            member_cookie,
+        )
+        second = self.request(
+            "POST",
+            "/api/orders",
+            {
+                "wechatName": "普通订单",
+                "deliveryMethod": "快递/物流",
+                "trackingNumbers": "OTHER-002",
+                "totalBoxes": 1,
+                "phone": "13900002222",
+                "items": [{"brand": "爱他美", "product": "卓萃", "quantity": 1}],
+            },
+            member_cookie,
+        )
+        self.assertEqual(first["status"], 201, first)
+        self.assertEqual(second["status"], 201, second)
+        self.request("PATCH", f"/api/orders/{first['json']['order']['id']}/status", {"status": "核对中"}, admin_cookie)
+
+        response = self.request(
+            "GET",
+            "/api/orders?status=%E6%A0%B8%E5%AF%B9%E4%B8%AD&deliveryMethod=%E8%87%AA%E9%80%81&keyword=TARGET",
+            cookie=admin_cookie,
+        )
+
+        self.assertEqual(response["status"], 200, response)
+        self.assertEqual([order["wechatName"] for order in response["json"]["orders"]], ["筛选目标"])
 
     def test_wechat_login_endpoint_is_removed(self):
         response = self.request(

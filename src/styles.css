@@ -486,6 +486,50 @@ select {
   padding: 10px;
 }
 
+.order-filters {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.order-filters input,
+.order-filters select {
+  width: 100%;
+  min-height: 40px;
+  border: 1px solid #d5dbe4;
+  border-radius: 6px;
+  padding: 0 10px;
+  background: #fff;
+  color: #263142;
+}
+
+.order-filters input[name="keyword"],
+.filter-actions {
+  grid-column: 1 / -1;
+}
+
+.filter-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.filter-actions button {
+  min-height: 40px;
+  border: 1px solid #d5dbe4;
+  border-radius: 6px;
+  background: #fff;
+  color: #344154;
+}
+
+.filter-actions button[type="submit"] {
+  border-color: var(--blue);
+  background: var(--blue);
+  color: #fff;
+}
+
 .order-card {
   width: 100%;
   margin: 0 0 10px;
@@ -679,10 +723,50 @@ select {
 }
 
 .login-card input {
+  width: 100%;
   min-height: 44px;
   border: 1px solid #d5dbe4;
   border-radius: 6px;
   padding: 0 12px;
+}
+
+.avatar-upload input {
+  padding: 9px 10px;
+}
+
+.avatar-upload small {
+  display: block;
+  margin-top: 6px;
+  color: #667085;
+}
+
+.profile-strip {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.avatar-replace {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid #d5dbe4;
+  border-radius: 8px;
+  background: #fff;
+  color: var(--blue);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.avatar-replace input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
 }
 
 .login-card .submit-button {
@@ -738,5 +822,13 @@ select {
 
   .user-form {
     grid-template-columns: 1fr;
+  }
+
+  .profile-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .avatar-replace {
+    width: 100%;
   }
 }

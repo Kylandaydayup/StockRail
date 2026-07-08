@@ -4,6 +4,8 @@ import { formatDateTime } from "./storage.js";
 const listNode = document.querySelector("#order-list");
 const detailNode = document.querySelector("#order-detail");
 const refreshButton = document.querySelector("#refresh-orders");
+const filterForm = document.querySelector("#order-filters");
+const resetFiltersButton = document.querySelector("#reset-filters");
 const logoutButton = document.querySelector("#logout");
 const adminUserNode = document.querySelector("#admin-user");
 const userAdminNode = document.querySelector("#user-admin");
@@ -22,6 +24,16 @@ if (currentUser) {
 }
 
 refreshButton.addEventListener("click", () => render());
+filterForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  selectedID = "";
+  await render();
+});
+resetFiltersButton.addEventListener("click", async () => {
+  filterForm.reset();
+  selectedID = "";
+  await render();
+});
 logoutButton.addEventListener("click", async () => {
   await api("/api/logout", { method: "POST", body: {} });
   location.href = "/login.html";
@@ -48,7 +60,7 @@ userForm.addEventListener("submit", async (event) => {
 });
 
 async function render() {
-  const payload = await api("/api/orders");
+  const payload = await api(`/api/orders${filterQuery()}`);
   orders = payload.orders;
   if (!selectedID && orders[0]) {
     selectedID = orders[0].id;
@@ -67,7 +79,7 @@ async function render() {
 
 function renderList(orders) {
   if (orders.length === 0) {
-    listNode.innerHTML = '<div class="empty-detail"><strong>暂无订单</strong><p>先在报单页提交一条记录。</p></div>';
+    listNode.innerHTML = '<div class="empty-detail"><strong>暂无订单</strong><p>当前条件下没有报单。</p></div>';
     return;
   }
   listNode.innerHTML = `
@@ -76,6 +88,7 @@ function renderList(orders) {
         <tr>
           <th>时间</th>
           <th>微信名字</th>
+          <th>方式</th>
           <th>单号</th>
           <th>件数</th>
           <th>罐数</th>
@@ -87,6 +100,7 @@ function renderList(orders) {
           <tr class="${order.id === selectedID ? "active-row" : ""}" data-id="${order.id}">
             <td>${formatDateTime(order.createdAt)}</td>
             <td>${escapeHTML(order.wechatName)}</td>
+            <td>${escapeHTML(order.deliveryMethod)}</td>
             <td>${escapeHTML(order.trackingNumbers)}</td>
             <td>${order.totalBoxes}</td>
             <td>${order.totalCans}</td>
@@ -102,6 +116,19 @@ function renderList(orders) {
       await render();
     });
   });
+}
+
+function filterQuery() {
+  const data = new FormData(filterForm);
+  const params = new URLSearchParams();
+  ["keyword", "status", "deliveryMethod", "dateFrom", "dateTo"].forEach((name) => {
+    const value = String(data.get(name) || "").trim();
+    if (value) {
+      params.set(name, value);
+    }
+  });
+  const query = params.toString();
+  return query ? `?${query}` : "";
 }
 
 function renderDetail(order) {

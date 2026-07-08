@@ -1,4 +1,5 @@
 import { api } from "./api.js";
+import { readAvatarFile } from "./image-upload.js";
 
 const form = document.querySelector("#login-form");
 const registerForm = document.querySelector("#register-form");
@@ -38,13 +39,14 @@ registerForm.addEventListener("submit", async (event) => {
   registerErrorNode.textContent = "";
   const data = new FormData(registerForm);
   try {
+    const avatarFile = data.get("avatarFile");
     await api("/api/register", {
       method: "POST",
       body: {
         username: data.get("username"),
         password: data.get("password"),
         nickname: data.get("nickname"),
-        avatarUrl: data.get("avatarUrl")
+        avatarImage: await readAvatarFile(avatarFile)
       }
     });
     location.href = "/";

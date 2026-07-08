@@ -19,10 +19,16 @@
 
       <form id="order-form" class="report-form" novalidate>
         <h1>（入库） 报单登记</h1>
-        <button id="current-user" class="data-button" type="button">
-          <span>♙</span>
-          我的数据
-        </button>
+        <div class="profile-strip">
+          <button id="current-user" class="data-button" type="button">
+            <span>♙</span>
+            我的数据
+          </button>
+          <label class="avatar-replace">
+            <input id="avatar-file" type="file" accept="image/png,image/jpeg,image/webp" />
+            <span>换头像</span>
+          </label>
+        </div>
 
         <section class="form-section">
           <label class="field-row">

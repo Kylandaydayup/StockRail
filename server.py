@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import base64
+import binascii
 import hashlib
 import hmac
 import json
@@ -11,7 +12,7 @@ import time
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 
 APP_ROOT = Path(__file__).resolve().parent
@@ -23,6 +24,7 @@ def create_app(config=None):
     db_path = config.get("db_path") or os.environ.get("STOCKRAIL_DB", str(APP_ROOT / "data" / "stockrail.db"))
     app = StockRailApp(
         db_path=db_path,
+        upload_dir=config.get("upload_dir") or os.environ.get("STOCKRAIL_UPLOAD_DIR", str(APP_ROOT / "uploads")),
         session_secret=config.get("session_secret") or os.environ.get("STOCKRAIL_SESSION_SECRET", "dev-session-secret"),
         superadmin_username=config.get("superadmin_username") or os.environ.get("STOCKRAIL_SUPERADMIN_USER", "superadmin"),
         superadmin_password=config.get("superadmin_password") or os.environ.get("STOCKRAIL_SUPERADMIN_PASSWORD", "ChangeMe123!"),
@@ -32,8 +34,9 @@ def create_app(config=None):
 
 
 class StockRailApp:
-    def __init__(self, db_path, session_secret, superadmin_username, superadmin_password):
+    def __init__(self, db_path, upload_dir, session_secret, superadmin_username, superadmin_password):
         self.db_path = db_path
+        self.upload_dir = Path(upload_dir)
         self.session_secret = session_secret.encode("utf-8")
         self.superadmin_username = superadmin_username
         self.superadmin_password = superadmin_password
@@ -110,17 +113,19 @@ class StockRailApp:
         return {"status": status, "headers": response_headers, "body": raw_body, "json": parsed}
 
     def dispatch(self, method, raw_path, headers, body):
-        path = urlparse(raw_path).path
+        parsed = urlparse(raw_path)
+        path = parsed.path
+        query = {key: values[-1] for key, values in parse_qs(parsed.query).items()}
         try:
             if path.startswith("/api/"):
-                return self.dispatch_api(method, path, headers, body)
+                return self.dispatch_api(method, path, query, headers, body)
             return self.serve_static(path)
         except HTTPError as exc:
             return json_response(exc.status, {"error": exc.message})
         except Exception as exc:
             return json_response(500, {"error": "internal server error", "detail": str(exc)})
 
-    def dispatch_api(self, method, path, headers, body):
+    def dispatch_api(self, method, path, query, headers, body):
         if method == "POST" and path == "/api/login":
             return self.login(read_json(body))
         if method == "POST" and path == "/api/register":
@@ -132,9 +137,12 @@ class StockRailApp:
         if method == "GET" and path == "/api/me":
             user = self.require_user(headers)
             return json_response(200, {"user": public_user(user)})
+        if method == "PATCH" and path == "/api/me/profile":
+            user = self.require_user(headers)
+            return json_response(200, {"user": self.update_profile(user, read_json(body))})
         if method == "GET" and path == "/api/orders":
             user = self.require_user(headers)
-            return json_response(200, {"orders": self.list_orders(user)})
+            return json_response(200, {"orders": self.list_orders(user, query)})
         if method == "POST" and path == "/api/orders":
             user = self.require_user(headers)
             return json_response(201, {"order": self.create_order(user, read_json(body))})
@@ -155,6 +163,16 @@ class StockRailApp:
 
     def serve_static(self, path):
         rel_path = "index.html" if path in ("", "/") else path.lstrip("/")
+        if rel_path.startswith("uploads/"):
+            upload_candidate = (self.upload_dir / rel_path.removeprefix("uploads/")).resolve()
+            upload_root = self.upload_dir.resolve()
+            try:
+                upload_candidate.relative_to(upload_root)
+            except ValueError:
+                raise HTTPError(404, "file not found")
+            if upload_candidate.is_file():
+                content_type = mimetypes.guess_type(str(upload_candidate))[0] or "application/octet-stream"
+                return 200, {"Content-Type": content_type}, upload_candidate.read_bytes()
         candidate = (APP_ROOT / rel_path).resolve()
         if not str(candidate).startswith(str(APP_ROOT)) or not candidate.is_file():
             raise HTTPError(404, "file not found")
@@ -180,7 +198,7 @@ class StockRailApp:
         username = text(payload.get("username"))
         password = str(payload.get("password") or "")
         nickname = text(payload.get("nickname")) or username
-        avatar_url = text(payload.get("avatarUrl"))
+        avatar_url = self.avatar_url_from_payload(payload)
         if not username or len(password) < 8:
             raise HTTPError(400, "注册信息不完整")
         with self.connect() as conn:
@@ -196,6 +214,49 @@ class StockRailApp:
                 raise HTTPError(409, "用户名已存在")
             user = conn.execute("select * from users where username = ?", (username,)).fetchone()
         return self.issue_session_response(user, 201)
+
+    def update_profile(self, user, payload):
+        nickname = text(payload.get("nickname")) or user["nickname"] or user["username"]
+        avatar_url = self.avatar_url_from_payload(payload) or user["avatar_url"]
+        with self.connect() as conn:
+            conn.execute(
+                "update users set nickname = ?, avatar_url = ? where id = ?",
+                (nickname, avatar_url, user["id"]),
+            )
+            updated = conn.execute("select * from users where id = ?", (user["id"],)).fetchone()
+        return public_user(updated)
+
+    def avatar_url_from_payload(self, payload):
+        image = text(payload.get("avatarImage"))
+        if image:
+            return self.save_avatar_image(image)
+        return text(payload.get("avatarUrl"))
+
+    def save_avatar_image(self, data_url):
+        if "," not in data_url:
+            raise HTTPError(400, "头像图片格式不正确")
+        header, encoded = data_url.split(",", 1)
+        content_types = {
+            "data:image/png;base64": ".png",
+            "data:image/jpeg;base64": ".jpg",
+            "data:image/jpg;base64": ".jpg",
+            "data:image/webp;base64": ".webp",
+        }
+        extension = content_types.get(header.lower())
+        if extension is None:
+            raise HTTPError(400, "仅支持 png、jpg、webp 头像")
+        try:
+            raw = base64.b64decode(encoded, validate=True)
+        except (ValueError, binascii.Error):
+            raise HTTPError(400, "头像图片格式不正确")
+        if len(raw) > 2 * 1024 * 1024:
+            raise HTTPError(400, "头像图片不能超过 2MB")
+        avatar_dir = self.upload_dir / "avatars"
+        avatar_dir.mkdir(parents=True, exist_ok=True)
+        filename = secrets.token_urlsafe(16) + extension
+        path = avatar_dir / filename
+        path.write_bytes(raw)
+        return f"/uploads/avatars/{filename}"
 
     def issue_session_response(self, user, status):
         token = secrets.token_urlsafe(32)
@@ -293,12 +354,37 @@ class StockRailApp:
                 )
         return self.get_order(user, order_id)
 
-    def list_orders(self, user):
-        where = ""
+    def list_orders(self, user, filters=None):
+        filters = filters or {}
+        clauses = []
         params = []
         if user["role"] == "member":
-            where = "where orders.user_id = ?"
+            clauses.append("orders.user_id = ?")
             params.append(user["id"])
+        status = text(filters.get("status"))
+        if status in {"待处理", "核对中", "已入库"}:
+            clauses.append("orders.status = ?")
+            params.append(status)
+        delivery_method = text(filters.get("deliveryMethod"))
+        if delivery_method in {"快递/物流", "自送", "同城配送"}:
+            clauses.append("orders.delivery_method = ?")
+            params.append(delivery_method)
+        keyword = text(filters.get("keyword"))
+        if keyword:
+            clauses.append(
+                "(orders.wechat_name like ? or orders.tracking_numbers like ? or orders.phone like ? or users.username like ?)"
+            )
+            like = f"%{keyword}%"
+            params.extend([like, like, like, like])
+        date_from = text(filters.get("dateFrom"))
+        if date_from:
+            clauses.append("orders.created_at >= ?")
+            params.append(date_from + "T00:00:00")
+        date_to = text(filters.get("dateTo"))
+        if date_to:
+            clauses.append("orders.created_at <= ?")
+            params.append(date_to + "T23:59:59")
+        where = "where " + " and ".join(clauses) if clauses else ""
         with self.connect() as conn:
             rows = conn.execute(
                 f"""
