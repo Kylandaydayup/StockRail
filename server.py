@@ -1017,6 +1017,9 @@ class RequestHandler(BaseHTTPRequestHandler):
     def do_PATCH(self):
         self.respond(*self.app.dispatch("PATCH", self.path, dict(self.headers), self.read_body()))
 
+    def do_DELETE(self):
+        self.respond(*self.app.dispatch("DELETE", self.path, dict(self.headers), self.read_body()))
+
     def read_body(self):
         length = int(self.headers.get("Content-Length") or 0)
         return self.rfile.read(length) if length else b""
