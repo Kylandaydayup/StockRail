@@ -983,7 +983,8 @@ def build_verification_email(email, code, expires_at):
     message["To"] = email
     message["Subject"] = "StockRail 邮箱验证码"
     plain = (
-        "StockRail 库存轨道\n\n"
+        "StockRail\n"
+        "入库报单系统\n\n"
         f"您的邮箱验证码是：{code}\n"
         f"有效期至：{expires_text}\n\n"
         "请在页面中输入验证码完成操作。\n"
@@ -993,7 +994,7 @@ def build_verification_email(email, code, expires_at):
     <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;line-height:1.6;color:#1f2937">
       <div style="max-width:520px;margin:0 auto;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden">
         <div style="background:#1f5eff;color:#fff;padding:20px 24px">
-          <div style="font-size:14px;opacity:.9">StockRail 库存轨道</div>
+          <div style="font-size:14px;opacity:.9">StockRail</div>
           <div style="font-size:22px;font-weight:700;margin-top:4px">邮箱验证码</div>
         </div>
         <div style="padding:24px">

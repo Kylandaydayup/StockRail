@@ -267,7 +267,8 @@ class StockRailServerTest(unittest.TestCase):
 
         self.assertEqual(message["Subject"], "StockRail 邮箱验证码")
         rendered = message.get_body(preferencelist=("plain",)).get_content()
-        self.assertIn("StockRail 库存轨道", rendered)
+        self.assertIn("StockRail", rendered)
+        self.assertNotIn("StockRail 库存轨道", rendered)
         self.assertIn("123456", rendered)
         self.assertIn("不是您本人操作", rendered)
 

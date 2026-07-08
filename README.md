@@ -1,4 +1,4 @@
-# StockRail 库存轨道
+# StockRail
 
 StockRail 是一个轻量的入库报单系统。用户在手机页面提交报单，管理员在后台查看订单详情。
 
