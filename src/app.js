@@ -13,6 +13,9 @@ const collapseAllButton = document.querySelector("#collapse-all");
 const quickAddButton = document.querySelector("#quick-add");
 const currentUserButton = document.querySelector("#current-user");
 const avatarFileInput = document.querySelector("#avatar-file");
+const invitePanel = document.querySelector("#invite-panel");
+const inviteCountNode = document.querySelector("#invite-count");
+const copyInviteButton = document.querySelector("#copy-invite");
 
 let itemCounter = 0;
 
@@ -20,6 +23,7 @@ const currentUser = await requireSession(["member", "admin", "superadmin"]);
 if (currentUser) {
   currentUserButton.innerHTML = userBadge(currentUser);
   addItem();
+  loadInvite();
 }
 
 avatarFileInput.addEventListener("change", async () => {
@@ -46,6 +50,17 @@ avatarFileInput.addEventListener("change", async () => {
 });
 
 quickAddButton.addEventListener("click", () => addItem());
+copyInviteButton.addEventListener("click", async () => {
+  const link = copyInviteButton.dataset.link || "";
+  if (!link) {
+    return;
+  }
+  await navigator.clipboard.writeText(link);
+  copyInviteButton.textContent = "已复制";
+  setTimeout(() => {
+    copyInviteButton.textContent = "复制邀请链接";
+  }, 1800);
+});
 collapseAllButton.addEventListener("click", () => {
   const cards = [...itemsNode.querySelectorAll(".item-card")];
   const shouldCollapse = cards.some((card) => !card.classList.contains("is-collapsed"));
@@ -196,6 +211,17 @@ function userBadge(user) {
     return `<img class="user-avatar" src="${escapeAttribute(user.avatarUrl)}" alt="" />${user.nickname} · ${roleLabel(user.role)}`;
   }
   return `<span>♙</span>${user.nickname || user.username} · ${roleLabel(user.role)}`;
+}
+
+async function loadInvite() {
+  try {
+    const invite = await api("/api/invite");
+    invitePanel.hidden = false;
+    inviteCountNode.textContent = `已邀请 ${invite.inviteCount || 0} 人`;
+    copyInviteButton.dataset.link = invite.inviteLink;
+  } catch {
+    invitePanel.hidden = true;
+  }
 }
 
 function escapeAttribute(value) {

@@ -14,11 +14,12 @@
         <div class="auth-tabs">
           <button class="active" type="button" data-panel="login-panel">登录</button>
           <button type="button" data-panel="register-panel">注册</button>
+          <button type="button" data-panel="reset-panel">忘记密码</button>
         </div>
         <form id="login-form" class="auth-panel" data-panel-id="login-panel">
           <label>
-            <span>用户名</span>
-            <input name="username" autocomplete="username" placeholder="请输入用户名" />
+            <span>邮箱</span>
+            <input name="username" autocomplete="username" placeholder="请输入邮箱" />
           </label>
           <label>
             <span>密码</span>
@@ -28,10 +29,15 @@
           <button class="submit-button" type="submit">登录</button>
         </form>
         <form id="register-form" class="auth-panel" data-panel-id="register-panel" hidden>
+          <input name="inviteCode" type="hidden" />
           <label>
-            <span>用户名</span>
-            <input name="username" autocomplete="username" placeholder="用于账号登录" />
+            <span>邮箱</span>
+            <input name="email" autocomplete="email" placeholder="请输入邮箱" />
           </label>
+          <div class="code-row">
+            <input name="verificationCode" inputmode="numeric" maxlength="6" placeholder="邮箱验证码" />
+            <button type="button" data-send-code="register">发送验证码</button>
+          </div>
           <label>
             <span>密码</span>
             <input name="password" type="password" autocomplete="new-password" placeholder="至少 8 位" />
@@ -47,6 +53,22 @@
           </label>
           <p id="register-error" class="form-error"></p>
           <button class="submit-button" type="submit">注册并登录</button>
+        </form>
+        <form id="reset-form" class="auth-panel" data-panel-id="reset-panel" hidden>
+          <label>
+            <span>邮箱</span>
+            <input name="email" autocomplete="email" placeholder="请输入注册邮箱" />
+          </label>
+          <div class="code-row">
+            <input name="verificationCode" inputmode="numeric" maxlength="6" placeholder="邮箱验证码" />
+            <button type="button" data-send-code="reset">发送验证码</button>
+          </div>
+          <label>
+            <span>新密码</span>
+            <input name="password" type="password" autocomplete="new-password" placeholder="至少 8 位" />
+          </label>
+          <p id="reset-error" class="form-error"></p>
+          <button class="submit-button" type="submit">重置密码</button>
         </form>
       </section>
     </main>

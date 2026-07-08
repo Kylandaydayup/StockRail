@@ -39,9 +39,33 @@ npm test
 
 ## 注册
 
-- 普通注册会创建 `member` 用户。
+- 普通注册使用邮箱 + 6 位验证码，会创建 `member` 用户。
 - 注册时可填写昵称，并直接上传头像图片用于页面展示；登录后也可以替换头像。
+- 登录支持邮箱或用户名。
+- 忘记密码使用同一邮箱验证码体系重置密码。
 - 系统不包含微信登录入口。
+
+邮箱验证码使用与 Blue-Console 一致的 SMTP 环境变量：
+
+```bash
+export SMTP_HOST=smtp.qq.com
+export SMTP_PORT=587
+export SMTP_USERNAME='your-mail@qq.com'
+export SMTP_PASSWORD='your-smtp-auth-code'
+export SMTP_FROM='your-mail@qq.com'
+export REGISTER_CODE_TTL=10m
+export REGISTER_CODE_COOLDOWN=60s
+export ALLOW_INSECURE_MAIL_LOG=false
+```
+
+## 邀请码
+
+每个用户都有自己的邀请链接。别人通过该链接注册后：
+
+- 新用户仍然是 `member`，不会自动获得 admin 权限。
+- 系统会记录邀请关系。
+- 邀请人可以在报单页看到“已邀请 N 人”。
+- 后续可在此基础上扩展返佣、额度、团队、代理层级等商业规则。
 
 ## 管理员筛选
 
@@ -51,10 +75,13 @@ npm test
 
 ```bash
 export STOCKRAIL_SUPERADMIN_USER=superadmin
+export STOCKRAIL_SUPERADMIN_EMAIL=superadmin@example.com
 export STOCKRAIL_SUPERADMIN_PASSWORD='change-this-password'
 export STOCKRAIL_SESSION_SECRET='change-this-secret'
 python3 server.py
 ```
+
+`superadmin` 可以在后台用户与权限区域把已有用户设置为 `admin`、`member` 或 `superadmin`。
 
 ## 生产部署（非容器）
 

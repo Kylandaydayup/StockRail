@@ -47,7 +47,7 @@ userForm.addEventListener("submit", async (event) => {
     await api("/api/users", {
       method: "POST",
       body: {
-        username: data.get("username"),
+        email: data.get("email"),
         password: data.get("password"),
         role: data.get("role")
       }
@@ -207,7 +207,7 @@ async function renderUsers() {
       <thead>
         <tr>
           <th>ID</th>
-          <th>用户名</th>
+          <th>邮箱</th>
           <th>昵称</th>
           <th>角色</th>
           <th>创建时间</th>
@@ -217,14 +217,33 @@ async function renderUsers() {
         ${payload.users.map((user) => `
           <tr>
             <td>${user.id}</td>
-            <td>${escapeHTML(user.username)}</td>
+            <td>${escapeHTML(user.email || user.username)}</td>
             <td>${escapeHTML(user.nickname || "")}</td>
-            <td>${escapeHTML(user.role)}</td>
+            <td>${roleSelect(user)}</td>
             <td>${formatDateTime(user.createdAt)}</td>
           </tr>
         `).join("")}
       </tbody>
     </table>
+  `;
+  userListNode.querySelectorAll("[data-role-user]").forEach((select) => {
+    select.addEventListener("change", async () => {
+      await api(`/api/users/${select.dataset.roleUser}/role`, {
+        method: "PATCH",
+        body: { role: select.value }
+      });
+      await renderUsers();
+    });
+  });
+}
+
+function roleSelect(user) {
+  return `
+    <select class="role-select" data-role-user="${user.id}">
+      ${["member", "admin", "superadmin"].map((role) => `
+        <option value="${role}" ${user.role === role ? "selected" : ""}>${role}</option>
+      `).join("")}
+    </select>
   `;
 }
 

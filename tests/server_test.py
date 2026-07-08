@@ -6,16 +6,34 @@ import unittest
 from server import create_app
 
 
+class CaptureMailer:
+    def __init__(self):
+        self.messages = []
+
+    def send_register_code(self, email, code, expires_at):
+        self.messages.append({"email": email, "code": code, "expiresAt": expires_at})
+
+    def code_for(self, email):
+        for message in reversed(self.messages):
+            if message["email"] == email:
+                return message["code"]
+        return ""
+
+
 class StockRailServerTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
+        self.mailer = CaptureMailer()
         self.app = create_app(
             {
                 "db_path": f"{self.tmp.name}/stockrail.db",
                 "upload_dir": f"{self.tmp.name}/uploads",
                 "superadmin_username": "root",
+                "superadmin_email": "root@example.com",
                 "superadmin_password": "RootPass123!",
                 "session_secret": "test-secret",
+                "mailer": self.mailer,
+                "register_code_cooldown_seconds": 0,
             }
         )
 
@@ -46,6 +64,23 @@ class StockRailServerTest(unittest.TestCase):
         )
         self.assertEqual(response["status"], 201, response)
         return response["json"]
+
+    def register_member(self, email="member@example.com", nickname="用户昵称A", invite_code=""):
+        code_response = self.request("POST", "/api/register/code", {"email": email})
+        self.assertEqual(code_response["status"], 200, code_response)
+        response = self.request(
+            "POST",
+            "/api/register",
+            {
+                "email": email,
+                "password": "MemberPass789!",
+                "nickname": nickname,
+                "verificationCode": self.mailer.code_for(email),
+                "inviteCode": invite_code,
+            },
+        )
+        self.assertEqual(response["status"], 201, response)
+        return response
 
     def test_superadmin_creates_users_and_admin_lists_orders(self):
         root_cookie = self.login("root", "RootPass123!")
@@ -117,33 +152,40 @@ class StockRailServerTest(unittest.TestCase):
 
         self.assertEqual(response["status"], 403, response)
 
-    def test_public_register_creates_member_with_profile(self):
-        response = self.request(
+    def test_public_register_requires_email_verification_and_supports_email_login(self):
+        missing_code = self.request(
             "POST",
             "/api/register",
             {
-                "username": "new-member",
+                "email": "new-member@example.com",
                 "password": "MemberPass789!",
                 "nickname": "用户昵称A",
                 "avatarUrl": "https://example.com/avatar-a.jpg",
             },
         )
+        self.assertEqual(missing_code["status"], 400, missing_code)
 
-        self.assertEqual(response["status"], 201, response)
+        response = self.register_member("new-member@example.com", "用户昵称A")
+
         self.assertEqual(response["json"]["user"]["role"], "member")
+        self.assertEqual(response["json"]["user"]["email"], "new-member@example.com")
         self.assertEqual(response["json"]["user"]["nickname"], "用户昵称A")
-        self.assertEqual(response["json"]["user"]["avatarUrl"], "https://example.com/avatar-a.jpg")
         self.assertIn("Set-Cookie", response["headers"])
+        login_cookie = self.login("new-member@example.com", "MemberPass789!")
+        self.assertTrue(login_cookie.startswith("stockrail_session="))
 
     def test_register_and_profile_avatar_upload_save_replaceable_image(self):
         image = "data:image/png;base64," + base64.b64encode(b"first-avatar").decode("ascii")
+        email = "avatar-member@example.com"
+        self.request("POST", "/api/register/code", {"email": email})
         response = self.request(
             "POST",
             "/api/register",
             {
-                "username": "avatar-member",
+                "email": email,
                 "password": "MemberPass789!",
                 "nickname": "头像用户",
+                "verificationCode": self.mailer.code_for(email),
                 "avatarImage": image,
             },
         )
@@ -169,6 +211,55 @@ class StockRailServerTest(unittest.TestCase):
         self.assertTrue(replacement_url.endswith(".jpg"), replacement_url)
         with open(f"{self.tmp.name}{replacement_url}", "rb") as saved:
             self.assertEqual(saved.read(), b"replacement-avatar")
+
+    def test_invite_link_records_inviter_and_invited_members(self):
+        inviter = self.register_member("inviter@example.com", "邀请人")
+        inviter_cookie = inviter["headers"]["Set-Cookie"].split(";", 1)[0]
+        invite = self.request("GET", "/api/invite", cookie=inviter_cookie)
+        self.assertEqual(invite["status"], 200, invite)
+        self.assertIn("/login.html?invite=", invite["json"]["inviteLink"])
+
+        invite_code = invite["json"]["inviteCode"]
+        invited = self.register_member("invited@example.com", "被邀请人", invite_code)
+
+        self.assertEqual(invited["json"]["user"]["invitedByUsername"], "inviter@example.com")
+        refreshed = self.request("GET", "/api/invite", cookie=inviter_cookie)
+        self.assertEqual(refreshed["json"]["inviteCount"], 1)
+        self.assertEqual(refreshed["json"]["invitedUsers"][0]["email"], "invited@example.com")
+
+    def test_superadmin_updates_existing_user_role(self):
+        root_cookie = self.login("root", "RootPass123!")
+        member = self.register_member("role-target@example.com", "权限用户")
+        user_id = member["json"]["user"]["id"]
+
+        response = self.request(
+            "PATCH",
+            f"/api/users/{user_id}/role",
+            {"role": "admin"},
+            root_cookie,
+        )
+
+        self.assertEqual(response["status"], 200, response)
+        self.assertEqual(response["json"]["user"]["role"], "admin")
+
+    def test_password_reset_uses_email_verification_code(self):
+        self.register_member("reset@example.com", "重置用户")
+        code_response = self.request("POST", "/api/password-reset/code", {"email": "reset@example.com"})
+        self.assertEqual(code_response["status"], 200, code_response)
+
+        reset_response = self.request(
+            "POST",
+            "/api/password-reset",
+            {
+                "email": "reset@example.com",
+                "password": "NewPass123!",
+                "verificationCode": self.mailer.code_for("reset@example.com"),
+            },
+        )
+
+        self.assertEqual(reset_response["status"], 200, reset_response)
+        login_cookie = self.login("reset@example.com", "NewPass123!")
+        self.assertTrue(login_cookie.startswith("stockrail_session="))
 
     def test_admin_filters_orders_by_status_delivery_and_keyword(self):
         root_cookie = self.login("root", "RootPass123!")

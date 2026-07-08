@@ -666,11 +666,13 @@ select {
 }
 
 .user-form input,
-.user-form select {
+.user-form select,
+.role-select {
   min-height: 42px;
   border: 1px solid #d5dbe4;
   border-radius: 6px;
   padding: 0 12px;
+  background: #fff;
 }
 
 .user-form button {
@@ -769,6 +771,62 @@ select {
   cursor: pointer;
 }
 
+.code-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.code-row button {
+  min-width: 108px;
+  min-height: 44px;
+  border: 1px solid var(--blue);
+  border-radius: 6px;
+  background: var(--blue);
+  color: #fff;
+  font-weight: 700;
+}
+
+.code-row button:disabled {
+  border-color: #d5dbe4;
+  background: #eef2f7;
+  color: #667085;
+}
+
+.invite-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 12px 0;
+  padding: 12px;
+  border: 1px solid #d5dbe4;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.invite-panel strong,
+.invite-panel span {
+  display: block;
+}
+
+.invite-panel span {
+  margin-top: 4px;
+  color: #667085;
+  font-size: 13px;
+}
+
+.invite-panel button {
+  min-height: 40px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--blue);
+  color: #fff;
+  padding: 0 12px;
+  white-space: nowrap;
+}
+
 .login-card .submit-button {
   width: 100%;
   margin: 0;
@@ -776,7 +834,7 @@ select {
 
 .auth-tabs {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 8px;
   margin-bottom: 18px;
 }
@@ -830,5 +888,14 @@ select {
 
   .avatar-replace {
     width: 100%;
+  }
+
+  .code-row {
+    grid-template-columns: 1fr;
+  }
+
+  .invite-panel {
+    flex-direction: column;
+    align-items: stretch;
   }
 }

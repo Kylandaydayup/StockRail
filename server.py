@@ -7,11 +7,14 @@ import json
 import mimetypes
 import os
 import secrets
+import smtplib
 import sqlite3
 import time
+from email.message import EmailMessage
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from email.utils import parseaddr
 from urllib.parse import parse_qs, urlparse
 
 
@@ -27,19 +30,38 @@ def create_app(config=None):
         upload_dir=config.get("upload_dir") or os.environ.get("STOCKRAIL_UPLOAD_DIR", str(APP_ROOT / "uploads")),
         session_secret=config.get("session_secret") or os.environ.get("STOCKRAIL_SESSION_SECRET", "dev-session-secret"),
         superadmin_username=config.get("superadmin_username") or os.environ.get("STOCKRAIL_SUPERADMIN_USER", "superadmin"),
+        superadmin_email=config.get("superadmin_email") or os.environ.get("STOCKRAIL_SUPERADMIN_EMAIL", "superadmin@stockrail.local"),
         superadmin_password=config.get("superadmin_password") or os.environ.get("STOCKRAIL_SUPERADMIN_PASSWORD", "ChangeMe123!"),
+        mailer=config.get("mailer") or SMTPMailer.from_env(),
+        register_code_ttl=int(config.get("register_code_ttl_seconds") or os.environ.get("REGISTER_CODE_TTL_SECONDS") or duration_env("REGISTER_CODE_TTL", 600)),
+        register_code_cooldown=int(config.get("register_code_cooldown_seconds") or os.environ.get("REGISTER_CODE_COOLDOWN_SECONDS") or duration_env("REGISTER_CODE_COOLDOWN", 60)),
     )
     app.init_db()
     return app
 
 
 class StockRailApp:
-    def __init__(self, db_path, upload_dir, session_secret, superadmin_username, superadmin_password):
+    def __init__(
+        self,
+        db_path,
+        upload_dir,
+        session_secret,
+        superadmin_username,
+        superadmin_email,
+        superadmin_password,
+        mailer,
+        register_code_ttl,
+        register_code_cooldown,
+    ):
         self.db_path = db_path
         self.upload_dir = Path(upload_dir)
         self.session_secret = session_secret.encode("utf-8")
         self.superadmin_username = superadmin_username
+        self.superadmin_email = normalize_email(superadmin_email)
         self.superadmin_password = superadmin_password
+        self.mailer = mailer
+        self.register_code_ttl = register_code_ttl
+        self.register_code_cooldown = register_code_cooldown
 
     def connect(self):
         Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
@@ -54,10 +76,13 @@ class StockRailApp:
                 create table if not exists users (
                   id integer primary key autoincrement,
                   username text not null unique,
+                  email text not null default '',
                   password_hash text not null,
                   role text not null check(role in ('member','admin','superadmin')),
                   nickname text not null default '',
                   avatar_url text not null default '',
+                  invite_code text not null default '',
+                  invited_by integer,
                   created_at text not null
                 );
                 create table if not exists sessions (
@@ -89,16 +114,54 @@ class StockRailApp:
                   quantity integer not null,
                   foreign key(order_id) references orders(id) on delete cascade
                 );
+                create table if not exists verification_codes (
+                  purpose text not null,
+                  email text not null,
+                  code_hash text not null,
+                  expires_at integer not null,
+                  cooldown_until integer not null,
+                  created_at text not null,
+                  primary key(purpose, email)
+                );
                 """
             )
+            ensure_user_column(conn, "email", "text not null default ''")
             ensure_user_column(conn, "nickname", "text not null default ''")
             ensure_user_column(conn, "avatar_url", "text not null default ''")
+            ensure_user_column(conn, "invite_code", "text not null default ''")
+            ensure_user_column(conn, "invited_by", "integer")
+            self.backfill_users(conn)
+            conn.execute("create unique index if not exists idx_users_email on users(email)")
+            conn.execute("create unique index if not exists idx_users_invite_code on users(invite_code)")
             user = conn.execute("select id from users where username = ?", (self.superadmin_username,)).fetchone()
             if user is None:
                 conn.execute(
-                    "insert into users(username, password_hash, role, created_at) values(?,?,?,?)",
-                    (self.superadmin_username, hash_password(self.superadmin_password), "superadmin", now_iso()),
+                    """
+                    insert into users(username, email, password_hash, role, nickname, invite_code, created_at)
+                    values(?,?,?,?,?,?,?)
+                    """,
+                    (
+                        self.superadmin_username,
+                        self.superadmin_email,
+                        hash_password(self.superadmin_password),
+                        "superadmin",
+                        "超级管理员",
+                        generate_invite_code(),
+                        now_iso(),
+                    ),
                 )
+            else:
+                conn.execute(
+                    "update users set email = coalesce(nullif(email, ''), ?), invite_code = coalesce(nullif(invite_code, ''), ?) where id = ?",
+                    (self.superadmin_email, generate_invite_code(), user["id"]),
+                )
+
+    def backfill_users(self, conn):
+        users = conn.execute("select id, username, email, invite_code from users").fetchall()
+        for user in users:
+            email = user["email"] or user["username"] if is_valid_email(user["username"]) else f"user-{user['id']}@stockrail.local"
+            invite_code = user["invite_code"] or generate_invite_code()
+            conn.execute("update users set email = ?, invite_code = ? where id = ?", (email, invite_code, user["id"]))
 
     def handle_test_request(self, method, path, headers=None, body=None):
         headers = headers or {}
@@ -128,8 +191,14 @@ class StockRailApp:
     def dispatch_api(self, method, path, query, headers, body):
         if method == "POST" and path == "/api/login":
             return self.login(read_json(body))
+        if method == "POST" and path == "/api/register/code":
+            return self.send_verification_code("register", read_json(body))
         if method == "POST" and path == "/api/register":
             return self.register(read_json(body))
+        if method == "POST" and path == "/api/password-reset/code":
+            return self.send_verification_code("password-reset", read_json(body), require_existing=True)
+        if method == "POST" and path == "/api/password-reset":
+            return self.reset_password(read_json(body))
         if method == "POST" and path == "/api/logout":
             user = self.require_user(headers)
             self.logout(headers, user)
@@ -140,6 +209,9 @@ class StockRailApp:
         if method == "PATCH" and path == "/api/me/profile":
             user = self.require_user(headers)
             return json_response(200, {"user": self.update_profile(user, read_json(body))})
+        if method == "GET" and path == "/api/invite":
+            user = self.require_user(headers)
+            return json_response(200, self.get_invite_info(user, headers))
         if method == "GET" and path == "/api/orders":
             user = self.require_user(headers)
             return json_response(200, {"orders": self.list_orders(user, query)})
@@ -159,6 +231,10 @@ class StockRailApp:
         if method == "POST" and path == "/api/users":
             self.require_role(headers, {"superadmin"})
             return json_response(201, {"user": self.create_user(read_json(body))})
+        if method == "PATCH" and path.startswith("/api/users/") and path.endswith("/role"):
+            self.require_role(headers, {"superadmin"})
+            user_id = path.split("/")[-2]
+            return json_response(200, {"user": self.update_user_role(user_id, read_json(body))})
         raise HTTPError(404, "api not found")
 
     def serve_static(self, path):
@@ -180,10 +256,13 @@ class StockRailApp:
         return 200, {"Content-Type": content_type}, candidate.read_bytes()
 
     def login(self, payload):
-        username = text(payload.get("username"))
+        username = text(payload.get("username") or payload.get("email"))
         password = str(payload.get("password") or "")
         with self.connect() as conn:
-            user = conn.execute("select * from users where username = ?", (username,)).fetchone()
+            user = conn.execute(
+                "select * from users where username = ? or email = ?",
+                (username, normalize_email(username)),
+            ).fetchone()
             if user is None or not verify_password(password, user["password_hash"]):
                 raise HTTPError(401, "用户名或密码错误")
             token = secrets.token_urlsafe(32)
@@ -194,26 +273,122 @@ class StockRailApp:
         headers = {"Set-Cookie": cookie_header(token)}
         return json_response(200, {"user": public_user(user)}, headers)
 
+    def send_verification_code(self, purpose, payload, require_existing=False):
+        email = normalize_email(payload.get("email"))
+        if not is_valid_email(email):
+            raise HTTPError(400, "邮箱格式不正确")
+        with self.connect() as conn:
+            existing = conn.execute("select id from users where email = ?", (email,)).fetchone()
+            if require_existing and existing is None:
+                raise HTTPError(404, "邮箱未注册")
+            if purpose == "register" and existing is not None:
+                raise HTTPError(409, "邮箱已注册")
+            now = int(time.time())
+            record = conn.execute(
+                "select cooldown_until from verification_codes where purpose = ? and email = ?",
+                (purpose, email),
+            ).fetchone()
+            if record and now < int(record["cooldown_until"]):
+                raise HTTPError(429, "验证码发送太频繁")
+            code = f"{secrets.randbelow(1000000):06d}"
+            expires_at = now + self.register_code_ttl
+            conn.execute(
+                """
+                insert into verification_codes(purpose, email, code_hash, expires_at, cooldown_until, created_at)
+                values(?,?,?,?,?,?)
+                on conflict(purpose, email) do update set
+                  code_hash = excluded.code_hash,
+                  expires_at = excluded.expires_at,
+                  cooldown_until = excluded.cooldown_until,
+                  created_at = excluded.created_at
+                """,
+                (purpose, email, hash_code(code), expires_at, now + self.register_code_cooldown, now_iso()),
+            )
+        self.mailer.send_register_code(email, code, expires_at)
+        return json_response(
+            200,
+            {
+                "email": email,
+                "cooldownSeconds": self.register_code_cooldown,
+                "expiresInSeconds": self.register_code_ttl,
+                "message": "验证码已发送，请检查邮箱",
+            },
+        )
+
+    def verify_code(self, purpose, email, code):
+        code = text(code)
+        if len(code) != 6 or not code.isdigit():
+            raise HTTPError(400, "验证码必须是 6 位数字")
+        with self.connect() as conn:
+            record = conn.execute(
+                "select code_hash, expires_at from verification_codes where purpose = ? and email = ?",
+                (purpose, email),
+            ).fetchone()
+            if record is None or not hmac.compare_digest(record["code_hash"], hash_code(code)):
+                raise HTTPError(400, "验证码错误")
+            if int(time.time()) > int(record["expires_at"]):
+                conn.execute("delete from verification_codes where purpose = ? and email = ?", (purpose, email))
+                raise HTTPError(400, "验证码已过期")
+            conn.execute("delete from verification_codes where purpose = ? and email = ?", (purpose, email))
+
     def register(self, payload):
-        username = text(payload.get("username"))
+        email = normalize_email(payload.get("email"))
+        username = normalize_username(payload.get("username")) or email
         password = str(payload.get("password") or "")
         nickname = text(payload.get("nickname")) or username
         avatar_url = self.avatar_url_from_payload(payload)
-        if not username or len(password) < 8:
+        if not is_valid_email(email) or len(password) < 8:
             raise HTTPError(400, "注册信息不完整")
+        self.verify_code("register", email, payload.get("verificationCode"))
+        invite_code = text(payload.get("inviteCode"))
         with self.connect() as conn:
+            inviter = None
+            if invite_code:
+                inviter = conn.execute("select id from users where invite_code = ?", (invite_code,)).fetchone()
+                if inviter is None:
+                    raise HTTPError(400, "邀请码无效")
             try:
                 conn.execute(
                     """
-                    insert into users(username, password_hash, role, nickname, avatar_url, created_at)
-                    values(?,?,?,?,?,?)
+                    insert into users(username, email, password_hash, role, nickname, avatar_url, invite_code, invited_by, created_at)
+                    values(?,?,?,?,?,?,?,?,?)
                     """,
-                    (username, hash_password(password), "member", nickname, avatar_url, now_iso()),
+                    (
+                        username,
+                        email,
+                        hash_password(password),
+                        "member",
+                        nickname,
+                        avatar_url,
+                        generate_invite_code(),
+                        inviter["id"] if inviter else None,
+                        now_iso(),
+                    ),
                 )
             except sqlite3.IntegrityError:
-                raise HTTPError(409, "用户名已存在")
-            user = conn.execute("select * from users where username = ?", (username,)).fetchone()
+                raise HTTPError(409, "邮箱已注册")
+            user = conn.execute(
+                """
+                select users.*, inviter.username as invited_by_username
+                from users left join users inviter on inviter.id = users.invited_by
+                where users.email = ?
+                """,
+                (email,),
+            ).fetchone()
         return self.issue_session_response(user, 201)
+
+    def reset_password(self, payload):
+        email = normalize_email(payload.get("email"))
+        password = str(payload.get("password") or "")
+        if not is_valid_email(email) or len(password) < 8:
+            raise HTTPError(400, "重置信息不完整")
+        self.verify_code("password-reset", email, payload.get("verificationCode"))
+        with self.connect() as conn:
+            user = conn.execute("select * from users where email = ?", (email,)).fetchone()
+            if user is None:
+                raise HTTPError(404, "邮箱未注册")
+            conn.execute("update users set password_hash = ? where id = ?", (hash_password(password), user["id"]))
+        return json_response(200, {"ok": True})
 
     def update_profile(self, user, payload):
         nickname = text(payload.get("nickname")) or user["nickname"] or user["username"]
@@ -298,26 +473,58 @@ class StockRailApp:
         return user
 
     def create_user(self, payload):
-        username = text(payload.get("username"))
+        requested_username = normalize_username(payload.get("username"))
+        email = normalize_email(payload.get("email"))
+        if not email and is_valid_email(requested_username):
+            email = requested_username
+        if not email and requested_username:
+            email = f"{requested_username}@stockrail.local"
+        username = normalize_username(payload.get("username")) or email
         password = str(payload.get("password") or "")
         role = text(payload.get("role"))
-        if not username or len(password) < 8 or role not in ROLES:
+        if not username or not is_valid_email(email) or len(password) < 8 or role not in ROLES:
             raise HTTPError(400, "用户信息不完整")
         with self.connect() as conn:
             try:
                 conn.execute(
-                    "insert into users(username, password_hash, role, created_at) values(?,?,?,?)",
-                    (username, hash_password(password), role, now_iso()),
+                    "insert into users(username, email, password_hash, role, nickname, invite_code, created_at) values(?,?,?,?,?,?,?)",
+                    (username, email, hash_password(password), role, username, generate_invite_code(), now_iso()),
                 )
             except sqlite3.IntegrityError:
-                raise HTTPError(409, "用户名已存在")
+                raise HTTPError(409, "邮箱已注册")
             user = conn.execute("select * from users where username = ?", (username,)).fetchone()
         return public_user(user)
 
     def list_users(self):
         with self.connect() as conn:
-            users = conn.execute("select id, username, role, created_at from users order by id asc").fetchall()
+            users = conn.execute("select id, username, email, nickname, role, created_at from users order by id asc").fetchall()
         return [dict(user) for user in users]
+
+    def update_user_role(self, user_id, payload):
+        role = text(payload.get("role"))
+        if role not in ROLES:
+            raise HTTPError(400, "角色不合法")
+        with self.connect() as conn:
+            conn.execute("update users set role = ? where id = ?", (role, user_id))
+            if conn.total_changes == 0:
+                raise HTTPError(404, "用户不存在")
+            user = conn.execute("select * from users where id = ?", (user_id,)).fetchone()
+        return public_user(user)
+
+    def get_invite_info(self, user, headers):
+        with self.connect() as conn:
+            invited = conn.execute(
+                "select id, username, email, nickname, role, created_at from users where invited_by = ? order by id desc",
+                (user["id"],),
+            ).fetchall()
+        origin = request_origin(headers)
+        invite_link = f"{origin}/login.html?invite={user['invite_code']}" if origin else f"/login.html?invite={user['invite_code']}"
+        return {
+            "inviteCode": user["invite_code"],
+            "inviteLink": invite_link,
+            "inviteCount": len(invited),
+            "invitedUsers": [dict(row) for row in invited],
+        }
 
     def create_order(self, user, payload):
         errors = validate_order(payload)
@@ -482,9 +689,12 @@ def public_user(user):
     return {
         "id": user["id"],
         "username": user["username"],
+        "email": user["email"],
         "role": user["role"],
         "nickname": user["nickname"] or user["username"],
         "avatarUrl": user["avatar_url"],
+        "inviteCode": user["invite_code"],
+        "invitedByUsername": row_value(user, "invited_by_username", ""),
         "createdAt": user["created_at"],
     }
 
@@ -535,6 +745,10 @@ def hash_token(token):
     return hmac.new(b"stockrail-session", token.encode("utf-8"), hashlib.sha256).hexdigest()
 
 
+def hash_code(code):
+    return hmac.new(b"stockrail-verification", code.encode("utf-8"), hashlib.sha256).hexdigest()
+
+
 def cookie_header(token):
     return f"stockrail_session={token}; Path=/; HttpOnly; SameSite=Lax; Max-Age={86400 * 14}"
 
@@ -562,6 +776,27 @@ def text(value):
     return str(value or "").strip()
 
 
+def normalize_email(value):
+    return text(value).lower()
+
+
+def normalize_username(value):
+    return text(value).lower()
+
+
+def is_valid_email(value):
+    email = normalize_email(value)
+    parsed_name, parsed_email = parseaddr(email)
+    return bool(email and parsed_email == email and "@" in email and "." in email.rsplit("@", 1)[-1])
+
+
+def row_value(row, key, default=None):
+    try:
+        return row[key]
+    except (KeyError, IndexError):
+        return default
+
+
 def positive_int(value):
     try:
         return int(value) > 0
@@ -571,6 +806,74 @@ def positive_int(value):
 
 def now_iso():
     return time.strftime("%Y-%m-%dT%H:%M:%S%z")
+
+
+def duration_env(name, default_seconds):
+    value = text(os.environ.get(name))
+    if not value:
+        return default_seconds
+    try:
+        return int(value)
+    except ValueError:
+        pass
+    units = {"s": 1, "m": 60, "h": 3600}
+    suffix = value[-1].lower()
+    if suffix in units:
+        try:
+            return int(value[:-1]) * units[suffix]
+        except ValueError:
+            return default_seconds
+    return default_seconds
+
+
+def generate_invite_code():
+    return secrets.token_urlsafe(8).replace("-", "").replace("_", "")[:10]
+
+
+def request_origin(headers):
+    host = headers.get("Host") or headers.get("host")
+    if not host:
+        return ""
+    proto = headers.get("X-Forwarded-Proto") or headers.get("x-forwarded-proto") or "http"
+    return f"{proto}://{host}"
+
+
+class SMTPMailer:
+    def __init__(self, host, port, username, password, from_addr, allow_log):
+        self.host = host
+        self.port = port
+        self.username = username
+        self.password = password
+        self.from_addr = from_addr
+        self.allow_log = allow_log
+
+    @classmethod
+    def from_env(cls):
+        return cls(
+            os.environ.get("SMTP_HOST", ""),
+            int(os.environ.get("SMTP_PORT", "587") or "587"),
+            os.environ.get("SMTP_USERNAME", ""),
+            os.environ.get("SMTP_PASSWORD", ""),
+            os.environ.get("SMTP_FROM", os.environ.get("SMTP_USERNAME", "noreply@example.com")),
+            os.environ.get("ALLOW_INSECURE_MAIL_LOG", "true").lower() == "true",
+        )
+
+    def send_register_code(self, email, code, expires_at):
+        if not self.host or not self.from_addr:
+            if self.allow_log:
+                print(f"[mail] verification code for {email}: {code}, expires at {expires_at}")
+                return
+            raise HTTPError(500, "邮箱服务未配置")
+        message = EmailMessage()
+        message["From"] = self.from_addr
+        message["To"] = email
+        message["Subject"] = "StockRail 验证码"
+        message.set_content(f"您好，\n\n您的 StockRail 验证码是：{code}\n验证码 10 分钟内有效。\n\n如果不是您本人操作，请忽略这封邮件。\n")
+        with smtplib.SMTP(self.host, self.port, timeout=15) as smtp:
+            smtp.starttls()
+            if self.username and self.password:
+                smtp.login(self.username, self.password)
+            smtp.send_message(message)
 
 
 class RequestHandler(BaseHTTPRequestHandler):
