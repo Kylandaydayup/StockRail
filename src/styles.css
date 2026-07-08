@@ -109,6 +109,13 @@ a {
   font-size: 17px;
 }
 
+.user-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
 .form-section,
 .detail-section {
   border-top: 1px solid var(--line);
@@ -681,6 +688,60 @@ select {
 .login-card .submit-button {
   width: 100%;
   margin: 0;
+}
+
+.auth-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.auth-tabs button {
+  min-height: 38px;
+  border: 1px solid #d5dbe4;
+  border-radius: 6px;
+  background: #fff;
+  color: #344154;
+}
+
+.auth-tabs button.active {
+  border-color: var(--blue);
+  background: var(--blue-soft);
+  color: var(--blue);
+  font-weight: 700;
+}
+
+.wechat-note {
+  margin-bottom: 14px;
+  padding: 12px;
+  border-radius: 6px;
+  background: #f8fafc;
+  color: #475467;
+}
+
+.wechat-note strong {
+  display: block;
+  margin-bottom: 4px;
+  color: #111827;
+}
+
+.wechat-note p {
+  margin: 0;
+  color: #475467;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.wechat-button {
+  width: 100%;
+  min-height: 52px;
+  border: 0;
+  border-radius: 8px;
+  background: #1aad19;
+  color: #fff;
+  font-size: 18px;
+  font-weight: 700;
 }
 
 @media (max-width: 760px) {

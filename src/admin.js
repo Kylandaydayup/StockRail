@@ -16,7 +16,7 @@ let orders = [];
 let currentUser = await requireSession(["admin", "superadmin"]);
 
 if (currentUser) {
-  adminUserNode.textContent = `${currentUser.username} · ${currentUser.role}`;
+  adminUserNode.textContent = `${currentUser.nickname || currentUser.username} · ${currentUser.role}`;
   userAdminNode.hidden = currentUser.role !== "superadmin";
   await render();
 }
@@ -181,6 +181,7 @@ async function renderUsers() {
         <tr>
           <th>ID</th>
           <th>用户名</th>
+          <th>昵称</th>
           <th>角色</th>
           <th>创建时间</th>
         </tr>
@@ -190,6 +191,7 @@ async function renderUsers() {
           <tr>
             <td>${user.id}</td>
             <td>${escapeHTML(user.username)}</td>
+            <td>${escapeHTML(user.nickname || "")}</td>
             <td>${escapeHTML(user.role)}</td>
             <td>${formatDateTime(user.createdAt)}</td>
           </tr>

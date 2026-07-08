@@ -16,7 +16,7 @@ let itemCounter = 0;
 
 const currentUser = await requireSession(["member", "admin", "superadmin"]);
 if (currentUser) {
-  currentUserButton.innerHTML = `<span>♙</span>${currentUser.username} · ${roleLabel(currentUser.role)}`;
+  currentUserButton.innerHTML = userBadge(currentUser);
   addItem();
 }
 
@@ -164,4 +164,15 @@ function roleLabel(role) {
     admin: "管理员",
     superadmin: "超级管理员"
   }[role] || role;
+}
+
+function userBadge(user) {
+  if (user.avatarUrl) {
+    return `<img class="user-avatar" src="${escapeAttribute(user.avatarUrl)}" alt="" />${user.nickname} · ${roleLabel(user.role)}`;
+  }
+  return `<span>♙</span>${user.nickname || user.username} · ${roleLabel(user.role)}`;
+}
+
+function escapeAttribute(value) {
+  return String(value).replaceAll("&", "&amp;").replaceAll('"', "&quot;").replaceAll("<", "&lt;");
 }

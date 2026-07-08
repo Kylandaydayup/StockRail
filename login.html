@@ -11,7 +11,12 @@
       <section class="login-card">
         <p>StockRail 库存轨道</p>
         <h1>账号登录</h1>
-        <form id="login-form">
+        <div class="auth-tabs">
+          <button class="active" type="button" data-panel="login-panel">登录</button>
+          <button type="button" data-panel="register-panel">注册</button>
+          <button type="button" data-panel="wechat-panel">微信登录</button>
+        </div>
+        <form id="login-form" class="auth-panel" data-panel-id="login-panel">
           <label>
             <span>用户名</span>
             <input name="username" autocomplete="username" placeholder="请输入用户名" />
@@ -22,6 +27,43 @@
           </label>
           <p id="login-error" class="form-error"></p>
           <button class="submit-button" type="submit">登录</button>
+        </form>
+        <form id="register-form" class="auth-panel" data-panel-id="register-panel" hidden>
+          <label>
+            <span>用户名</span>
+            <input name="username" autocomplete="username" placeholder="用于账号登录" />
+          </label>
+          <label>
+            <span>密码</span>
+            <input name="password" type="password" autocomplete="new-password" placeholder="至少 8 位" />
+          </label>
+          <label>
+            <span>微信昵称</span>
+            <input name="nickname" placeholder="默认显示为微信昵称" />
+          </label>
+          <label>
+            <span>微信头像 URL</span>
+            <input name="avatarUrl" placeholder="可选，粘贴微信头像地址" />
+          </label>
+          <p id="register-error" class="form-error"></p>
+          <button class="submit-button" type="submit">注册并登录</button>
+        </form>
+        <form id="wechat-form" class="auth-panel" data-panel-id="wechat-panel" hidden>
+          <div class="wechat-note">
+            <strong>微信登录</strong>
+            <p>当前未配置微信开放平台凭证，先使用微信资料登录验证头像和昵称链路。配置 AppID/Secret 后可切到真实 OAuth。</p>
+          </div>
+          <label>
+            <span>微信昵称</span>
+            <input name="nickname" placeholder="例如：微信小王" />
+          </label>
+          <label>
+            <span>微信头像 URL</span>
+            <input name="avatarUrl" placeholder="可选" />
+          </label>
+          <input name="openid" type="hidden" />
+          <p id="wechat-error" class="form-error"></p>
+          <button class="wechat-button" type="submit">使用微信资料登录</button>
         </form>
       </section>
     </main>

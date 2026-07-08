@@ -37,6 +37,22 @@ npm test
 - `admin`：查看报单表格、订单详情、修改订单状态。
 - `superadmin`：拥有 admin 能力，并可以创建 `member`、`admin`、`superadmin` 用户。
 
+## 注册与微信登录
+
+- 普通注册会创建 `member` 用户。
+- 微信资料登录会创建或复用 `member` 用户，并把页面展示名设置为微信昵称、头像设置为微信头像。
+- 当前仓库内置的是可部署验证的微信资料登录入口；真实微信 OAuth 需要配置微信开放平台或公众号的 AppID、AppSecret、授权回调域名。
+
+真实微信 OAuth 的服务端配置建议预留为：
+
+```bash
+export WECHAT_APP_ID='your-app-id'
+export WECHAT_APP_SECRET='your-app-secret'
+export WECHAT_REDIRECT_URI='http://test.nexushome.top/api/wechat/callback'
+```
+
+没有这些凭证时，系统不会伪造已接入微信官方 OAuth，只提供受控的资料登录流程用于业务闭环验证。
+
 首次启动时会根据环境变量创建超级管理员：
 
 ```bash
