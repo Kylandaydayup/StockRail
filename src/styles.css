@@ -879,6 +879,15 @@ button:disabled {
   font-size: 13px;
 }
 
+.invite-link-text {
+  display: block;
+  max-width: 230px;
+  margin-top: 6px;
+  color: #667085;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
 .invite-panel button {
   min-height: 40px;
   border: 0;

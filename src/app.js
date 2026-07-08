@@ -14,6 +14,7 @@ const avatarFileInput = document.querySelector("#avatar-file");
 const closePageButton = document.querySelector("#close-page");
 const invitePanel = document.querySelector("#invite-panel");
 const inviteCountNode = document.querySelector("#invite-count");
+const inviteLinkTextNode = document.querySelector("#invite-link-text");
 const copyInviteButton = document.querySelector("#copy-invite");
 const toastNode = document.querySelector("#toast");
 const submitButton = form.querySelector('[type="submit"]');
@@ -68,14 +69,14 @@ copyInviteButton.addEventListener("click", async () => {
     return;
   }
   try {
-    await navigator.clipboard.writeText(link);
+    await copyText(link);
     copyInviteButton.textContent = "已复制";
     showToast("邀请链接已复制");
     setTimeout(() => {
       copyInviteButton.textContent = "复制邀请链接";
     }, 1800);
   } catch {
-    showToast("复制失败，请长按链接手动复制");
+    showToast("复制失败，请手动复制下方链接");
   }
 });
 collapseAllButton.addEventListener("click", () => {
@@ -255,6 +256,7 @@ async function loadInvite() {
     invitePanel.hidden = false;
     inviteCountNode.textContent = `已邀请 ${invite.inviteCount || 0} 人`;
     copyInviteButton.dataset.link = invite.inviteLink;
+    inviteLinkTextNode.textContent = invite.inviteLink;
   } catch {
     invitePanel.hidden = true;
   }
@@ -271,4 +273,23 @@ function showToast(message) {
   toastTimer = setTimeout(() => {
     toastNode.hidden = true;
   }, 1800);
+}
+
+async function copyText(text) {
+  if (navigator.clipboard && window.isSecureContext) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.left = "-9999px";
+  document.body.append(textarea);
+  textarea.select();
+  const copied = document.execCommand("copy");
+  textarea.remove();
+  if (!copied) {
+    throw new Error("copy failed");
+  }
 }
