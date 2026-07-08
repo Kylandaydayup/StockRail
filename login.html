@@ -15,7 +15,6 @@
         <div class="auth-tabs">
           <button class="active" type="button" data-panel="login-panel">登录</button>
           <button type="button" data-panel="register-panel">注册</button>
-          <button type="button" data-panel="reset-panel">忘记密码</button>
         </div>
         <form id="login-form" class="auth-panel" data-panel-id="login-panel">
           <label>
@@ -23,7 +22,10 @@
             <input name="username" autocomplete="username" placeholder="请输入邮箱" />
           </label>
           <label>
-            <span>密码</span>
+            <span class="field-title-row">
+              密码
+              <button class="text-link" type="button" data-panel-link="reset-panel">忘记密码？</button>
+            </span>
             <input name="password" type="password" autocomplete="current-password" placeholder="请输入密码" />
           </label>
           <p id="login-error" class="form-error"></p>
@@ -56,6 +58,10 @@
           <button class="submit-button" type="submit">注册并登录</button>
         </form>
         <form id="reset-form" class="auth-panel" data-panel-id="reset-panel" hidden>
+          <div class="panel-title-row">
+            <strong>重置密码</strong>
+            <button class="text-link" type="button" data-panel-link="login-panel">返回登录</button>
+          </div>
           <label>
             <span>邮箱</span>
             <input name="email" autocomplete="email" placeholder="请输入注册邮箱" />

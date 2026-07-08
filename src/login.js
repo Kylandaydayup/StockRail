@@ -13,11 +13,13 @@ registerForm.elements.inviteCode.value = inviteCode;
 
 document.querySelectorAll(".auth-tabs button").forEach((button) => {
   button.addEventListener("click", () => {
-    document.querySelectorAll(".auth-tabs button").forEach((item) => item.classList.remove("active"));
-    button.classList.add("active");
-    document.querySelectorAll(".auth-panel").forEach((panel) => {
-      panel.hidden = panel.dataset.panelId !== button.dataset.panel;
-    });
+    showPanel(button.dataset.panel);
+  });
+});
+
+document.querySelectorAll("[data-panel-link]").forEach((button) => {
+  button.addEventListener("click", () => {
+    showPanel(button.dataset.panelLink);
   });
 });
 
@@ -119,4 +121,13 @@ function startCountdown(button, seconds) {
     }
     button.textContent = `${remaining}s`;
   }, 1000);
+}
+
+function showPanel(panelId) {
+  document.querySelectorAll(".auth-tabs button").forEach((item) => {
+    item.classList.toggle("active", item.dataset.panel === panelId);
+  });
+  document.querySelectorAll(".auth-panel").forEach((panel) => {
+    panel.hidden = panel.dataset.panelId !== panelId;
+  });
 }

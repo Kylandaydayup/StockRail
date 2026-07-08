@@ -730,6 +730,37 @@ select {
   color: #344154;
 }
 
+.login-card .field-title-row,
+.panel-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.login-card .field-title-row {
+  margin-bottom: 6px;
+}
+
+.panel-title-row {
+  margin-bottom: 16px;
+}
+
+.panel-title-row strong {
+  color: #121826;
+  font-size: 18px;
+}
+
+.text-link {
+  border: 0;
+  background: transparent;
+  color: var(--blue);
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
 .login-card input {
   width: 100%;
   min-height: 44px;
@@ -840,7 +871,7 @@ select {
 
 .auth-tabs {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 8px;
   margin-bottom: 18px;
 }
