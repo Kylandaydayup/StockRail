@@ -1,5 +1,6 @@
 import json
 import base64
+import sqlite3
 import tempfile
 import unittest
 
@@ -269,6 +270,43 @@ class StockRailServerTest(unittest.TestCase):
         self.assertIn("StockRail 库存轨道", rendered)
         self.assertIn("123456", rendered)
         self.assertIn("不是您本人操作", rendered)
+
+    def test_user_backfill_preserves_existing_email_for_non_email_username(self):
+        db_path = f"{self.tmp.name}/legacy.db"
+        with sqlite3.connect(db_path) as conn:
+            conn.execute(
+                """
+                create table users (
+                  id integer primary key autoincrement,
+                  username text not null unique,
+                  email text not null default '',
+                  password_hash text not null,
+                  role text not null,
+                  created_at text not null
+                )
+                """
+            )
+            conn.execute(
+                "insert into users(username, email, password_hash, role, created_at) values(?,?,?,?,?)",
+                ("superadmin", "root@example.com", "legacy-hash", "superadmin", "2026-07-08T15:07:30+0800"),
+            )
+
+        create_app(
+            {
+                "db_path": db_path,
+                "upload_dir": f"{self.tmp.name}/uploads-legacy",
+                "superadmin_username": "superadmin",
+                "superadmin_email": "root@example.com",
+                "superadmin_password": "RootPass123!",
+                "session_secret": "test-secret",
+                "mailer": self.mailer,
+                "register_code_cooldown_seconds": 0,
+            }
+        )
+
+        with sqlite3.connect(db_path) as conn:
+            email = conn.execute("select email from users where username = ?", ("superadmin",)).fetchone()[0]
+        self.assertEqual(email, "root@example.com")
 
     def test_superadmin_views_immutable_audit_logs_for_important_operations(self):
         root_cookie = self.login("root", "RootPass123!")

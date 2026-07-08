@@ -163,14 +163,19 @@ class StockRailApp:
                 )
             else:
                 conn.execute(
-                    "update users set email = coalesce(nullif(email, ''), ?), invite_code = coalesce(nullif(invite_code, ''), ?) where id = ?",
+                    """
+                    update users
+                    set email = case when email = '' or email like 'user-%@stockrail.local' then ? else email end,
+                        invite_code = coalesce(nullif(invite_code, ''), ?)
+                    where id = ?
+                    """,
                     (self.superadmin_email, generate_invite_code(), user["id"]),
                 )
 
     def backfill_users(self, conn):
         users = conn.execute("select id, username, email, invite_code from users").fetchall()
         for user in users:
-            email = user["email"] or user["username"] if is_valid_email(user["username"]) else f"user-{user['id']}@stockrail.local"
+            email = user["email"] or (user["username"] if is_valid_email(user["username"]) else f"user-{user['id']}@stockrail.local")
             invite_code = user["invite_code"] or generate_invite_code()
             conn.execute("update users set email = ?, invite_code = ? where id = ?", (email, invite_code, user["id"]))
 
