@@ -178,8 +178,7 @@ select {
   grid-template-columns: 116px 1fr 34px;
 }
 
-.selectable::after,
-.item-select::after {
+.selectable::after {
   content: "›";
   grid-column: 3;
   grid-row: 1;
@@ -310,16 +309,6 @@ select {
   font-size: 18px;
 }
 
-.item-select {
-  position: relative;
-  display: grid;
-  grid-template-columns: 118px 1fr 34px;
-}
-
-.item-select select {
-  grid-column: 2;
-}
-
 .add-record {
   width: 100%;
   height: 72px;
@@ -328,6 +317,15 @@ select {
   background: #fff;
   color: var(--blue);
   font-size: 22px;
+}
+
+.item-helper {
+  margin: 0;
+  padding: 12px 18px;
+  border-top: 1px solid var(--line);
+  background: #f7f9fc;
+  color: #667085;
+  font-size: 14px;
 }
 
 .form-error {
@@ -347,6 +345,12 @@ select {
   color: #fff;
   font-size: 18px;
   font-weight: 700;
+}
+
+.submit-button:disabled,
+button:disabled {
+  opacity: 0.62;
+  cursor: not-allowed;
 }
 
 .success-sheet {
@@ -391,6 +395,27 @@ select {
 .success-sheet button {
   background: #eef2f7;
   color: #263142;
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 22px;
+  z-index: 20;
+  width: min(calc(100% - 36px), 360px);
+  margin: 0;
+  transform: translateX(-50%);
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: rgba(17, 24, 39, 0.92);
+  color: #fff;
+  font-size: 15px;
+  text-align: center;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.22);
+}
+
+.toast[hidden] {
+  display: none;
 }
 
 .admin-body {

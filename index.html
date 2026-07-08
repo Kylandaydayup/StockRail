@@ -10,7 +10,7 @@
   <body>
     <main class="phone-shell">
       <header class="wechat-bar">
-        <button class="icon-button" aria-label="关闭">×</button>
+        <button id="close-page" class="icon-button" type="button" aria-label="关闭">×</button>
         <div>
           <strong>（入库）报单登记</strong>
           <span>stockrail.local</span>
@@ -104,6 +104,7 @@
           <button type="button" id="new-order">继续报单</button>
         </div>
       </div>
+      <p id="toast" class="toast" role="status" aria-live="polite" hidden></p>
     </main>
 
     <script type="module" src="./src/app.js"></script>
