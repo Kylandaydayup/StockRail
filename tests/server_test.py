@@ -122,18 +122,18 @@ class StockRailServerTest(unittest.TestCase):
             {
                 "username": "new-member",
                 "password": "MemberPass789!",
-                "nickname": "微信昵称A",
+                "nickname": "用户昵称A",
                 "avatarUrl": "https://example.com/avatar-a.jpg",
             },
         )
 
         self.assertEqual(response["status"], 201, response)
         self.assertEqual(response["json"]["user"]["role"], "member")
-        self.assertEqual(response["json"]["user"]["nickname"], "微信昵称A")
+        self.assertEqual(response["json"]["user"]["nickname"], "用户昵称A")
         self.assertEqual(response["json"]["user"]["avatarUrl"], "https://example.com/avatar-a.jpg")
         self.assertIn("Set-Cookie", response["headers"])
 
-    def test_wechat_login_creates_member_from_wechat_profile(self):
+    def test_wechat_login_endpoint_is_removed(self):
         response = self.request(
             "POST",
             "/api/wechat/dev-login",
@@ -144,11 +144,7 @@ class StockRailServerTest(unittest.TestCase):
             },
         )
 
-        self.assertEqual(response["status"], 200, response)
-        self.assertEqual(response["json"]["user"]["role"], "member")
-        self.assertEqual(response["json"]["user"]["username"], "wechat_wechat-openid-1")
-        self.assertEqual(response["json"]["user"]["nickname"], "微信小王")
-        self.assertEqual(response["json"]["user"]["avatarUrl"], "https://example.com/wechat.jpg")
+        self.assertEqual(response["status"], 404, response)
 
 
 if __name__ == "__main__":

@@ -55,7 +55,6 @@ class StockRailApp:
                   role text not null check(role in ('member','admin','superadmin')),
                   nickname text not null default '',
                   avatar_url text not null default '',
-                  wechat_openid text unique,
                   created_at text not null
                 );
                 create table if not exists sessions (
@@ -91,8 +90,6 @@ class StockRailApp:
             )
             ensure_user_column(conn, "nickname", "text not null default ''")
             ensure_user_column(conn, "avatar_url", "text not null default ''")
-            ensure_user_column(conn, "wechat_openid", "text")
-            conn.execute("create unique index if not exists idx_users_wechat_openid on users(wechat_openid)")
             user = conn.execute("select id from users where username = ?", (self.superadmin_username,)).fetchone()
             if user is None:
                 conn.execute(
@@ -128,8 +125,6 @@ class StockRailApp:
             return self.login(read_json(body))
         if method == "POST" and path == "/api/register":
             return self.register(read_json(body))
-        if method == "POST" and path == "/api/wechat/dev-login":
-            return self.wechat_dev_login(read_json(body))
         if method == "POST" and path == "/api/logout":
             user = self.require_user(headers)
             self.logout(headers, user)
@@ -201,31 +196,6 @@ class StockRailApp:
                 raise HTTPError(409, "用户名已存在")
             user = conn.execute("select * from users where username = ?", (username,)).fetchone()
         return self.issue_session_response(user, 201)
-
-    def wechat_dev_login(self, payload):
-        openid = text(payload.get("openid"))
-        nickname = text(payload.get("nickname"))
-        avatar_url = text(payload.get("avatarUrl"))
-        if not openid or not nickname:
-            raise HTTPError(400, "微信资料不完整")
-        username = "wechat_" + openid
-        with self.connect() as conn:
-            user = conn.execute("select * from users where wechat_openid = ?", (openid,)).fetchone()
-            if user is None:
-                conn.execute(
-                    """
-                    insert into users(username, password_hash, role, nickname, avatar_url, wechat_openid, created_at)
-                    values(?,?,?,?,?,?,?)
-                    """,
-                    (username, hash_password(secrets.token_urlsafe(24)), "member", nickname, avatar_url, openid, now_iso()),
-                )
-            else:
-                conn.execute(
-                    "update users set nickname = ?, avatar_url = ? where id = ?",
-                    (nickname, avatar_url, user["id"]),
-                )
-            user = conn.execute("select * from users where wechat_openid = ?", (openid,)).fetchone()
-        return self.issue_session_response(user, 200)
 
     def issue_session_response(self, user, status):
         token = secrets.token_urlsafe(32)
