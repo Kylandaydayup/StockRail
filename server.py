@@ -123,6 +123,17 @@ class StockRailApp:
                   created_at text not null,
                   primary key(purpose, email)
                 );
+                create table if not exists audit_logs (
+                  id integer primary key autoincrement,
+                  actor_user_id integer,
+                  actor_email text not null default '',
+                  actor_role text not null default '',
+                  action text not null,
+                  target_type text not null default '',
+                  target_id text not null default '',
+                  details_json text not null default '{}',
+                  created_at text not null
+                );
                 """
             )
             ensure_user_column(conn, "email", "text not null default ''")
@@ -229,12 +240,15 @@ class StockRailApp:
             self.require_role(headers, {"superadmin"})
             return json_response(200, {"users": self.list_users()})
         if method == "POST" and path == "/api/users":
-            self.require_role(headers, {"superadmin"})
-            return json_response(201, {"user": self.create_user(read_json(body))})
+            actor = self.require_role(headers, {"superadmin"})
+            return json_response(201, {"user": self.create_user(actor, read_json(body))})
         if method == "PATCH" and path.startswith("/api/users/") and path.endswith("/role"):
-            self.require_role(headers, {"superadmin"})
+            actor = self.require_role(headers, {"superadmin"})
             user_id = path.split("/")[-2]
-            return json_response(200, {"user": self.update_user_role(user_id, read_json(body))})
+            return json_response(200, {"user": self.update_user_role(actor, user_id, read_json(body))})
+        if method == "GET" and path == "/api/audit-logs":
+            self.require_role(headers, {"superadmin"})
+            return json_response(200, {"logs": self.list_audit_logs(query)})
         raise HTTPError(404, "api not found")
 
     def serve_static(self, path):
@@ -375,6 +389,14 @@ class StockRailApp:
                 """,
                 (email,),
             ).fetchone()
+            self.write_audit_log(
+                conn,
+                None,
+                "user.register",
+                "user",
+                str(user["id"]),
+                {"email": email, "invitedBy": inviter["id"] if inviter else None},
+            )
         return self.issue_session_response(user, 201)
 
     def reset_password(self, payload):
@@ -388,6 +410,7 @@ class StockRailApp:
             if user is None:
                 raise HTTPError(404, "邮箱未注册")
             conn.execute("update users set password_hash = ? where id = ?", (hash_password(password), user["id"]))
+            self.write_audit_log(conn, user, "user.password.reset", "user", str(user["id"]), {"email": email})
         return json_response(200, {"ok": True})
 
     def update_profile(self, user, payload):
@@ -399,6 +422,7 @@ class StockRailApp:
                 (nickname, avatar_url, user["id"]),
             )
             updated = conn.execute("select * from users where id = ?", (user["id"],)).fetchone()
+            self.write_audit_log(conn, user, "user.profile.update", "user", str(user["id"]), {"nickname": nickname})
         return public_user(updated)
 
     def avatar_url_from_payload(self, payload):
@@ -472,7 +496,7 @@ class StockRailApp:
             raise HTTPError(403, "权限不足")
         return user
 
-    def create_user(self, payload):
+    def create_user(self, actor, payload):
         requested_username = normalize_username(payload.get("username"))
         email = normalize_email(payload.get("email"))
         if not email and is_valid_email(requested_username):
@@ -493,6 +517,7 @@ class StockRailApp:
             except sqlite3.IntegrityError:
                 raise HTTPError(409, "邮箱已注册")
             user = conn.execute("select * from users where username = ?", (username,)).fetchone()
+            self.write_audit_log(conn, actor, "user.create", "user", str(user["id"]), {"email": email, "role": role})
         return public_user(user)
 
     def list_users(self):
@@ -500,15 +525,24 @@ class StockRailApp:
             users = conn.execute("select id, username, email, nickname, role, created_at from users order by id asc").fetchall()
         return [dict(user) for user in users]
 
-    def update_user_role(self, user_id, payload):
+    def update_user_role(self, actor, user_id, payload):
         role = text(payload.get("role"))
         if role not in ROLES:
             raise HTTPError(400, "角色不合法")
         with self.connect() as conn:
+            before = conn.execute("select role from users where id = ?", (user_id,)).fetchone()
             conn.execute("update users set role = ? where id = ?", (role, user_id))
             if conn.total_changes == 0:
                 raise HTTPError(404, "用户不存在")
             user = conn.execute("select * from users where id = ?", (user_id,)).fetchone()
+            self.write_audit_log(
+                conn,
+                actor,
+                "user.role.update",
+                "user",
+                str(user_id),
+                {"from": before["role"] if before else "", "to": role, "email": user["email"]},
+            )
         return public_user(user)
 
     def get_invite_info(self, user, headers):
@@ -525,6 +559,43 @@ class StockRailApp:
             "inviteCount": len(invited),
             "invitedUsers": [dict(row) for row in invited],
         }
+
+    def list_audit_logs(self, query):
+        try:
+            limit = int(query.get("limit", 100))
+        except (TypeError, ValueError):
+            limit = 100
+        limit = min(max(limit, 1), 300)
+        with self.connect() as conn:
+            rows = conn.execute(
+                """
+                select id, actor_user_id, actor_email, actor_role, action, target_type, target_id, details_json, created_at
+                from audit_logs
+                order by id desc
+                limit ?
+                """,
+                (limit,),
+            ).fetchall()
+        return [serialize_audit_log(row) for row in rows]
+
+    def write_audit_log(self, conn, actor, action, target_type="", target_id="", details=None):
+        details = details or {}
+        conn.execute(
+            """
+            insert into audit_logs(actor_user_id, actor_email, actor_role, action, target_type, target_id, details_json, created_at)
+            values(?,?,?,?,?,?,?,?)
+            """,
+            (
+                row_value(actor, "id", None) if actor is not None else None,
+                row_value(actor, "email", "") if actor is not None else "",
+                row_value(actor, "role", "") if actor is not None else "",
+                action,
+                target_type,
+                str(target_id),
+                json.dumps(details, ensure_ascii=False, sort_keys=True),
+                now_iso(),
+            ),
+        )
 
     def create_order(self, user, payload):
         errors = validate_order(payload)
@@ -559,6 +630,7 @@ class StockRailApp:
                     "insert into order_items(order_id, brand, product, quantity) values(?,?,?,?)",
                     (order_id, text(item.get("brand")), text(item.get("product")), int(item.get("quantity"))),
                 )
+            self.write_audit_log(conn, user, "order.create", "order", order_id, {"wechatName": text(payload.get("wechatName"))})
         return self.get_order(user, order_id)
 
     def list_orders(self, user, filters=None):
@@ -630,9 +702,18 @@ class StockRailApp:
         if status not in {"待处理", "核对中", "已入库"}:
             raise HTTPError(400, "状态不合法")
         with self.connect() as conn:
+            before = conn.execute("select status from orders where id = ?", (order_id,)).fetchone()
             conn.execute("update orders set status = ? where id = ?", (status, order_id))
             if conn.total_changes == 0:
                 raise HTTPError(404, "订单不存在")
+            self.write_audit_log(
+                conn,
+                _user,
+                "order.status.update",
+                "order",
+                order_id,
+                {"from": before["status"] if before else "", "to": status},
+            )
         return self.get_order(_user, order_id)
 
 
@@ -683,6 +764,24 @@ def serialize_order(row, items):
     result = serialize_order_summary(row)
     result["items"] = [dict(item) for item in items]
     return result
+
+
+def serialize_audit_log(row):
+    try:
+        details = json.loads(row["details_json"] or "{}")
+    except json.JSONDecodeError:
+        details = {}
+    return {
+        "id": row["id"],
+        "actorUserId": row["actor_user_id"],
+        "actorEmail": row["actor_email"],
+        "actorRole": row["actor_role"],
+        "action": row["action"],
+        "targetType": row["target_type"],
+        "targetId": row["target_id"],
+        "details": details,
+        "createdAt": row["created_at"],
+    }
 
 
 def public_user(user):
@@ -864,16 +963,46 @@ class SMTPMailer:
                 print(f"[mail] verification code for {email}: {code}, expires at {expires_at}")
                 return
             raise HTTPError(500, "邮箱服务未配置")
-        message = EmailMessage()
+        message = build_verification_email(email, code, expires_at)
         message["From"] = self.from_addr
-        message["To"] = email
-        message["Subject"] = "StockRail 验证码"
-        message.set_content(f"您好，\n\n您的 StockRail 验证码是：{code}\n验证码 10 分钟内有效。\n\n如果不是您本人操作，请忽略这封邮件。\n")
         with smtplib.SMTP(self.host, self.port, timeout=15) as smtp:
             smtp.starttls()
             if self.username and self.password:
                 smtp.login(self.username, self.password)
             smtp.send_message(message)
+
+
+def build_verification_email(email, code, expires_at):
+    expires_text = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(int(expires_at)))
+    message = EmailMessage()
+    message["To"] = email
+    message["Subject"] = "StockRail 邮箱验证码"
+    plain = (
+        "StockRail 库存轨道\n\n"
+        f"您的邮箱验证码是：{code}\n"
+        f"有效期至：{expires_text}\n\n"
+        "请在页面中输入验证码完成操作。\n"
+        "如果不是您本人操作，请忽略这封邮件。"
+    )
+    html = f"""
+    <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;line-height:1.6;color:#1f2937">
+      <div style="max-width:520px;margin:0 auto;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden">
+        <div style="background:#1f5eff;color:#fff;padding:20px 24px">
+          <div style="font-size:14px;opacity:.9">StockRail 库存轨道</div>
+          <div style="font-size:22px;font-weight:700;margin-top:4px">邮箱验证码</div>
+        </div>
+        <div style="padding:24px">
+          <p>您好，请在 StockRail 页面输入下面的验证码：</p>
+          <div style="font-size:32px;font-weight:800;letter-spacing:6px;color:#111827;background:#f3f4f6;border-radius:10px;padding:16px;text-align:center">{code}</div>
+          <p style="color:#6b7280">有效期至：{expires_text}</p>
+          <p style="color:#6b7280">如果不是您本人操作，请忽略这封邮件。</p>
+        </div>
+      </div>
+    </div>
+    """
+    message.set_content(plain)
+    message.add_alternative(html, subtype="html")
+    return message
 
 
 class RequestHandler(BaseHTTPRequestHandler):

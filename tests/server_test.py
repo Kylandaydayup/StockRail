@@ -3,7 +3,7 @@ import base64
 import tempfile
 import unittest
 
-from server import create_app
+from server import build_verification_email, create_app
 
 
 class CaptureMailer:
@@ -260,6 +260,35 @@ class StockRailServerTest(unittest.TestCase):
         self.assertEqual(reset_response["status"], 200, reset_response)
         login_cookie = self.login("reset@example.com", "NewPass123!")
         self.assertTrue(login_cookie.startswith("stockrail_session="))
+
+    def test_branded_email_template_contains_stockrail_identity(self):
+        message = build_verification_email("buyer@example.com", "123456", 1783522000)
+
+        self.assertEqual(message["Subject"], "StockRail 邮箱验证码")
+        rendered = message.get_body(preferencelist=("plain",)).get_content()
+        self.assertIn("StockRail 库存轨道", rendered)
+        self.assertIn("123456", rendered)
+        self.assertIn("不是您本人操作", rendered)
+
+    def test_superadmin_views_immutable_audit_logs_for_important_operations(self):
+        root_cookie = self.login("root", "RootPass123!")
+        member = self.register_member("audit-target@example.com", "审计用户")
+        user_id = member["json"]["user"]["id"]
+        role_response = self.request("PATCH", f"/api/users/{user_id}/role", {"role": "admin"}, root_cookie)
+        self.assertEqual(role_response["status"], 200, role_response)
+
+        logs_response = self.request("GET", "/api/audit-logs", cookie=root_cookie)
+        self.assertEqual(logs_response["status"], 200, logs_response)
+        actions = [log["action"] for log in logs_response["json"]["logs"]]
+        self.assertIn("user.register", actions)
+        self.assertIn("user.role.update", actions)
+
+        admin_cookie = self.login("audit-target@example.com", "MemberPass789!")
+        blocked = self.request("GET", "/api/audit-logs", cookie=admin_cookie)
+        self.assertEqual(blocked["status"], 403, blocked)
+
+        delete_attempt = self.request("DELETE", "/api/audit-logs/1", cookie=root_cookie)
+        self.assertEqual(delete_attempt["status"], 404, delete_attempt)
 
     def test_admin_filters_orders_by_status_delivery_and_keyword(self):
         root_cookie = self.login("root", "RootPass123!")

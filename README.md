@@ -58,6 +58,8 @@ export REGISTER_CODE_COOLDOWN=60s
 export ALLOW_INSECURE_MAIL_LOG=false
 ```
 
+验证码邮件使用 StockRail 品牌模板，包含品牌名、验证码、有效期和安全提醒。
+
 ## 邀请码
 
 每个用户都有自己的邀请链接。别人通过该链接注册后：
@@ -82,6 +84,14 @@ python3 server.py
 ```
 
 `superadmin` 可以在后台用户与权限区域把已有用户设置为 `admin`、`member` 或 `superadmin`。
+
+## 审计日志
+
+系统会记录重要操作审计日志，包括用户注册、忘记密码重置、资料修改、创建用户、修改角色、提交报单、修改订单状态。
+
+- 只有 `superadmin` 可以查看审计日志。
+- 系统不提供审计日志删除接口。
+- 审计日志用于追踪关键操作，不应作为普通业务数据清理。
 
 ## 生产部署（非容器）
 

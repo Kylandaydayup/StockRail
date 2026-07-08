@@ -9,9 +9,12 @@ const resetFiltersButton = document.querySelector("#reset-filters");
 const logoutButton = document.querySelector("#logout");
 const adminUserNode = document.querySelector("#admin-user");
 const userAdminNode = document.querySelector("#user-admin");
+const auditAdminNode = document.querySelector("#audit-admin");
 const userForm = document.querySelector("#user-form");
 const userListNode = document.querySelector("#user-list");
 const userErrorNode = document.querySelector("#user-error");
+const auditListNode = document.querySelector("#audit-list");
+const refreshAuditButton = document.querySelector("#refresh-audit");
 
 let selectedID = new URLSearchParams(window.location.search).get("id");
 let orders = [];
@@ -20,6 +23,7 @@ let currentUser = await requireSession(["admin", "superadmin"]);
 if (currentUser) {
   adminUserNode.textContent = `${currentUser.nickname || currentUser.username} · ${currentUser.role}`;
   userAdminNode.hidden = currentUser.role !== "superadmin";
+  auditAdminNode.hidden = currentUser.role !== "superadmin";
   await render();
 }
 
@@ -34,6 +38,7 @@ resetFiltersButton.addEventListener("click", async () => {
   selectedID = "";
   await render();
 });
+refreshAuditButton.addEventListener("click", () => renderAuditLogs());
 logoutButton.addEventListener("click", async () => {
   await api("/api/logout", { method: "POST", body: {} });
   location.href = "/login.html";
@@ -74,6 +79,7 @@ async function render() {
   }
   if (currentUser.role === "superadmin") {
     await renderUsers();
+    await renderAuditLogs();
   }
 }
 
@@ -245,6 +251,50 @@ function roleSelect(user) {
       `).join("")}
     </select>
   `;
+}
+
+async function renderAuditLogs() {
+  const payload = await api("/api/audit-logs?limit=100");
+  if (payload.logs.length === 0) {
+    auditListNode.innerHTML = '<div class="empty-detail"><strong>暂无审计日志</strong></div>';
+    return;
+  }
+  auditListNode.innerHTML = `
+    <table class="admin-table audit-table">
+      <thead>
+        <tr>
+          <th>时间</th>
+          <th>操作者</th>
+          <th>操作</th>
+          <th>对象</th>
+          <th>详情</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${payload.logs.map((log) => `
+          <tr>
+            <td>${formatDateTime(log.createdAt)}</td>
+            <td>${escapeHTML(log.actorEmail || "系统")}</td>
+            <td>${escapeHTML(actionLabel(log.action))}</td>
+            <td>${escapeHTML([log.targetType, log.targetId].filter(Boolean).join(" #"))}</td>
+            <td>${escapeHTML(JSON.stringify(log.details || {}))}</td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+  `;
+}
+
+function actionLabel(action) {
+  return {
+    "user.register": "用户注册",
+    "user.password.reset": "重置密码",
+    "user.profile.update": "修改资料",
+    "user.create": "创建用户",
+    "user.role.update": "修改角色",
+    "order.create": "提交报单",
+    "order.status.update": "修改订单状态"
+  }[action] || action;
 }
 
 function cell(label, value) {

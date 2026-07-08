@@ -634,6 +634,12 @@ select {
   font-size: 13px;
 }
 
+.audit-table td {
+  max-width: 260px;
+  vertical-align: top;
+  word-break: break-word;
+}
+
 .order-table tr[data-id] {
   cursor: pointer;
 }
