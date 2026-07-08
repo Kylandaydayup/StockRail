@@ -95,3 +95,8 @@ test("updateStatus changes an existing order status", () => {
 test("formatDateTime renders a compact Chinese date time", () => {
   assert.equal(formatDateTime("2026-07-08T01:20:00+08:00"), "2026/07/08 01:20");
 });
+
+test("formatDateTime renders a placeholder for missing or invalid values", () => {
+  assert.equal(formatDateTime(""), "-");
+  assert.equal(formatDateTime("not-a-date"), "-");
+});

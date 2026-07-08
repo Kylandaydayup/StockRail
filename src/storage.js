@@ -74,6 +74,9 @@ export function createOrderStore(options = {}) {
 
 export function formatDateTime(value) {
   const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) {
+    return "-";
+  }
   const parts = [
     date.getFullYear(),
     pad(date.getMonth() + 1),
