@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>StockRail 管理员订单详情</title>
+    <link rel="stylesheet" href="./src/styles.css" />
+  </head>
+  <body class="admin-body">
+    <main class="admin-layout">
+      <header class="admin-header">
+        <div>
+          <p>StockRail</p>
+          <h1>管理员订单详情</h1>
+        </div>
+        <nav class="admin-nav">
+          <span id="admin-user"></span>
+          <a href="./index.html">返回报单页</a>
+          <button id="logout" type="button">退出</button>
+        </nav>
+      </header>
+
+      <section class="admin-grid">
+        <aside class="order-list-panel">
+          <div class="panel-title">
+            <h2>报单表格</h2>
+            <button id="refresh-orders" type="button">刷新</button>
+          </div>
+          <div id="order-list" class="order-list"></div>
+        </aside>
+
+        <section id="order-detail" class="order-detail">
+          <div class="empty-detail">
+            <strong>暂无订单</strong>
+            <p>提交报单后，管理员可以在这里查看详情。</p>
+          </div>
+        </section>
+      </section>
+
+      <section id="user-admin" class="user-admin" hidden>
+        <div class="panel-title">
+          <h2>用户与权限</h2>
+        </div>
+        <form id="user-form" class="user-form">
+          <input name="username" placeholder="用户名" />
+          <input name="password" type="password" placeholder="初始密码，至少 8 位" />
+          <select name="role">
+            <option value="member">member</option>
+            <option value="admin">admin</option>
+            <option value="superadmin">superadmin</option>
+          </select>
+          <button type="submit">创建用户</button>
+        </form>
+        <p id="user-error" class="form-error"></p>
+        <div id="user-list" class="user-list"></div>
+      </section>
+    </main>
+
+    <script type="module" src="./src/admin.js"></script>
+  </body>
+</html>

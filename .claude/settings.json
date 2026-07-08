@@ -1,0 +1,10 @@
+{
+  "hooks": {
+    "PreToolUse": [],
+    "PostToolUse": []
+  },
+  "storyrail": {
+    "enabled": true,
+    "workflow": "spec-design-tasks-implementation-checks"
+  }
+}

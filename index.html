@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>StockRail 入库报单登记</title>
+    <link rel="stylesheet" href="./src/styles.css" />
+  </head>
+  <body>
+    <main class="phone-shell">
+      <header class="wechat-bar">
+        <button class="icon-button" aria-label="关闭">×</button>
+        <div>
+          <strong>（入库）报单登记</strong>
+          <span>stockrail.local</span>
+        </div>
+        <a class="admin-link" href="./admin.html" aria-label="管理员">管理</a>
+      </header>
+
+      <form id="order-form" class="report-form" novalidate>
+        <h1>（入库） 报单登记</h1>
+        <button id="current-user" class="data-button" type="button">
+          <span>♙</span>
+          我的数据
+        </button>
+
+        <section class="form-section">
+          <label class="field-row">
+            <span>微信名字</span>
+            <input name="wechatName" placeholder="结账时 能快速的 在微信上找到你" />
+          </label>
+
+          <label class="field-row selectable">
+            <span>交货方式</span>
+            <select name="deliveryMethod">
+              <option>快递/物流</option>
+              <option>自送</option>
+              <option>同城配送</option>
+            </select>
+          </label>
+
+          <label class="field-row">
+            <span><b>*</b>快递单号</span>
+            <textarea name="trackingNumbers" rows="2" placeholder="可填写多个快递单号，用/隔开：中通1234/韵达5678"></textarea>
+          </label>
+
+          <label class="field-row">
+            <span><b>*</b>总件数</span>
+            <input name="totalBoxes" inputmode="numeric" placeholder="该单号一共到多少箱的货" />
+          </label>
+        </section>
+
+        <section class="detail-section">
+          <div class="section-title">
+            <span><b>*</b>入库明细</span>
+            <div class="section-actions">
+              <button id="quick-add" class="square-button" type="button" aria-label="新增明细">＋</button>
+              <button id="collapse-all" class="light-button" type="button">⌃ 全部收起</button>
+            </div>
+          </div>
+          <div id="items" class="items"></div>
+        </section>
+
+        <section class="form-section">
+          <label class="field-row muted-row">
+            <span>总罐数</span>
+            <input name="totalCans" inputmode="numeric" placeholder="暂无内容" />
+          </label>
+
+          <label class="field-row">
+            <span><b>*</b>联系方式</span>
+            <input name="phone" inputmode="tel" placeholder="请填写手机号码" />
+          </label>
+
+          <label class="field-row">
+            <span>备注</span>
+            <textarea name="remark" rows="3" placeholder="备注其他奶粉品类/瘪罐/老日期信息，比如：皇家3-2月/瘪2个"></textarea>
+          </label>
+        </section>
+
+        <p id="form-error" class="form-error" role="alert"></p>
+        <button class="submit-button" type="submit">提交报单</button>
+      </form>
+
+      <div id="success-sheet" class="success-sheet" hidden>
+        <div>
+          <strong>报单已提交</strong>
+          <p>管理员现在可以在订单详情里查看这条记录。</p>
+          <a href="./admin.html">查看管理员页</a>
+          <button type="button" id="new-order">继续报单</button>
+        </div>
+      </div>
+    </main>
+
+    <script type="module" src="./src/app.js"></script>
+  </body>
+</html>

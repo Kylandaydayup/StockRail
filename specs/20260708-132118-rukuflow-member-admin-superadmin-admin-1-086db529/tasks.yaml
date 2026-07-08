@@ -1,0 +1,34 @@
+run_id: 20260708-132118-rukuflow-member-admin-superadmin-admin-1-086db529
+story: 将 RukuFlow 入库报单系统商用化：增加 member/admin/superadmin 权限管理，admin 可查看报单表格，部署到 139 服务器 test.nexushome.top 并端到端验证，暂不使用容器
+repo: order-report-system
+risk_level: high
+tasks:
+  - id: TASK-001
+    title: Confirm implementation boundary
+    status: pending
+    files:
+      - specs/20260708-132118-rukuflow-member-admin-superadmin-admin-1-086db529/technical-design.md
+    acceptance:
+      - The owning module or component is identified before coding.
+  - id: TASK-002
+    title: Implement requested behavior
+    status: pending
+    acceptance:
+      - The code change is scoped to this story.
+      - Unrelated files are not edited.
+  - id: TASK-003
+    title: Add or update tests
+    status: pending
+    acceptance:
+      - The behavior has automated test coverage where practical.
+      - Any manual checks are recorded.
+  - id: TASK-004
+    title: Run local checks
+    status: pending
+    acceptance:
+      - Required checks from storyrail.yaml pass.
+  - id: TASK-005
+    title: Prepare PR notes
+    status: pending
+    acceptance:
+      - Summary, tests, risk, and rollback notes are ready for review.

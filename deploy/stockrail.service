@@ -1,0 +1,15 @@
+[Unit]
+Description=StockRail inbound order system
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/stockrail
+EnvironmentFile=/etc/stockrail.env
+ExecStart=/usr/bin/python3 /opt/stockrail/server.py
+Restart=always
+RestartSec=3
+User=root
+
+[Install]
+WantedBy=multi-user.target
