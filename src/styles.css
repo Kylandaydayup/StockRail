@@ -885,7 +885,9 @@ button:disabled {
   margin-top: 6px;
   color: #667085;
   font-size: 12px;
+  cursor: text;
   overflow-wrap: anywhere;
+  user-select: text;
 }
 
 .invite-panel button {

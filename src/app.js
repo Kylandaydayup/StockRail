@@ -76,7 +76,12 @@ copyInviteButton.addEventListener("click", async () => {
       copyInviteButton.textContent = "复制邀请链接";
     }, 1800);
   } catch {
-    showToast("复制失败，请手动复制下方链接");
+    selectInviteLink();
+    copyInviteButton.textContent = "已选中";
+    showToast("链接已选中，请复制");
+    setTimeout(() => {
+      copyInviteButton.textContent = "复制邀请链接";
+    }, 1800);
   }
 });
 collapseAllButton.addEventListener("click", () => {
@@ -292,4 +297,15 @@ async function copyText(text) {
   if (!copied) {
     throw new Error("copy failed");
   }
+}
+
+function selectInviteLink() {
+  const selection = window.getSelection();
+  if (!selection || !inviteLinkTextNode.textContent) {
+    return;
+  }
+  const range = document.createRange();
+  range.selectNodeContents(inviteLinkTextNode);
+  selection.removeAllRanges();
+  selection.addRange(range);
 }
