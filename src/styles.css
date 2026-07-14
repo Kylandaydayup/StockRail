@@ -693,7 +693,7 @@ a {
 
 .admin-grid {
   display: grid;
-  grid-template-columns: minmax(420px, 0.95fr) minmax(0, 1.3fr);
+  grid-template-columns: minmax(620px, 0.95fr) minmax(0, 1.3fr);
   gap: 16px;
   align-items: start;
 }
@@ -735,10 +735,14 @@ a {
 
 .order-filters {
   display: grid;
-  grid-template-columns: minmax(180px, 1.5fr) repeat(4, minmax(120px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
   gap: 10px;
   padding: 12px;
   border-bottom: 1px solid var(--border);
+}
+
+.order-filters input[name="keyword"] {
+  grid-column: span 2;
 }
 
 .filter-actions {
@@ -1053,6 +1057,10 @@ a {
   .order-filters,
   .user-form {
     grid-template-columns: 1fr;
+  }
+
+  .order-filters input[name="keyword"] {
+    grid-column: auto;
   }
 
   .admin-table {
