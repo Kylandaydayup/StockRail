@@ -85,7 +85,7 @@ async function render() {
 
 function renderList(orders) {
   if (orders.length === 0) {
-    listNode.innerHTML = '<div class="empty-detail"><strong>暂无订单</strong><p>当前条件下没有报单。</p></div>';
+    listNode.innerHTML = '<div class="empty-state"><strong>暂无订单</strong><p>当前条件下没有报单。</p></div>';
     return;
   }
   listNode.innerHTML = `
@@ -110,7 +110,7 @@ function renderList(orders) {
             <td>${escapeHTML(order.trackingNumbers)}</td>
             <td>${order.totalBoxes}</td>
             <td>${order.totalCans}</td>
-            <td>${escapeHTML(order.status)}</td>
+            <td>${statusBadge(order.status)}</td>
           </tr>
         `).join("")}
       </tbody>
@@ -140,7 +140,7 @@ function filterQuery() {
 function renderDetail(order) {
   if (!order) {
     detailNode.innerHTML = `
-      <div class="empty-detail">
+      <div class="empty-state">
         <strong>暂无订单</strong>
         <p>提交报单后，管理员可以在这里查看详情。</p>
       </div>
@@ -152,7 +152,7 @@ function renderDetail(order) {
     <div class="detail-header">
       <div>
         <h2>${escapeHTML(order.wechatName)} 的入库报单</h2>
-        <span class="status-badge">${escapeHTML(order.status)}</span>
+        ${statusBadge(order.status)}
       </div>
       <div>${formatDateTime(order.createdAt)}</div>
     </div>
@@ -208,6 +208,10 @@ function renderDetail(order) {
 
 async function renderUsers() {
   const payload = await api("/api/users");
+  if (payload.users.length === 0) {
+    userListNode.innerHTML = '<div class="empty-state"><strong>暂无用户</strong><p>创建用户后会显示在这里。</p></div>';
+    return;
+  }
   userListNode.innerHTML = `
     <table class="admin-table">
       <thead>
@@ -253,10 +257,19 @@ function roleSelect(user) {
   `;
 }
 
+function statusBadge(status) {
+  const variant = {
+    "待处理": "warning",
+    "核对中": "info",
+    "已入库": "success"
+  }[status] || "neutral";
+  return `<span class="status-badge ${variant}">${escapeHTML(status)}</span>`;
+}
+
 async function renderAuditLogs() {
   const payload = await api("/api/audit-logs?limit=100");
   if (payload.logs.length === 0) {
-    auditListNode.innerHTML = '<div class="empty-detail"><strong>暂无审计日志</strong></div>';
+    auditListNode.innerHTML = '<div class="empty-state"><strong>暂无审计日志</strong><p>关键操作发生后会显示在这里。</p></div>';
     return;
   }
   auditListNode.innerHTML = `
