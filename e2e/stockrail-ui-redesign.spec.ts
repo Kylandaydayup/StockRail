@@ -96,14 +96,16 @@ test.describe('StockRail redesigned flows', () => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await login(page, adminUser, adminPassword);
     await createUser(page, memberEmail, memberPassword, 'member');
-    await page.getByRole('button', { name: '退出' }).click();
+    await Promise.all([
+      page.waitForURL(/\/login$/),
+      page.getByRole('button', { name: '退出' }).click(),
+    ]);
 
     await page.setViewportSize({ width: 375, height: 812 });
     await login(page, memberEmail, memberPassword);
     let overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
     expect(overflow, 'report page overflows at 375px').toBe(false);
 
-    await page.goto('/login');
     await login(page, adminUser, adminPassword);
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/admin');
