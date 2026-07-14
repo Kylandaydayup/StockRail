@@ -5,6 +5,10 @@
   "type": "module",
   "scripts": {
     "test": "node --test && python3 -m unittest discover -s tests -p '*_test.py'",
+    "test:e2e": "playwright test",
     "start": "python3 server.py"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.61.1"
   }
 }
