@@ -800,6 +800,12 @@ a {
   background: var(--muted);
 }
 
+.order-table th:nth-child(3),
+.order-table td:nth-child(3) {
+  min-width: 82px;
+  word-break: keep-all;
+}
+
 .active-row {
   background: var(--accent);
 }
@@ -1100,5 +1106,123 @@ a {
 
   .code-row {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 620px) {
+  .admin-table,
+  .admin-table tbody,
+  .admin-table tr,
+  .admin-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .admin-table thead {
+    display: none;
+  }
+
+  .admin-table tr {
+    border-bottom: 1px solid var(--border);
+    padding: 10px 12px;
+  }
+
+  .admin-table td {
+    display: grid;
+    grid-template-columns: 86px minmax(0, 1fr);
+    gap: 10px;
+    border-bottom: 0;
+    padding: 4px 0;
+    overflow-wrap: anywhere;
+  }
+
+  .admin-table td::before {
+    color: var(--muted-foreground);
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .order-table td:nth-child(1)::before {
+    content: "时间";
+  }
+
+  .order-table td:nth-child(2)::before {
+    content: "微信名字";
+  }
+
+  .order-table td:nth-child(3)::before {
+    content: "方式";
+  }
+
+  .order-table td:nth-child(4)::before {
+    content: "单号";
+  }
+
+  .order-table td:nth-child(5)::before {
+    content: "件数";
+  }
+
+  .order-table td:nth-child(6)::before {
+    content: "罐数";
+  }
+
+  .order-table td:nth-child(7)::before {
+    content: "状态";
+  }
+
+  .item-table td:nth-child(1)::before {
+    content: "#";
+  }
+
+  .item-table td:nth-child(2)::before {
+    content: "品牌系列";
+  }
+
+  .item-table td:nth-child(3)::before {
+    content: "奶粉名称";
+  }
+
+  .item-table td:nth-child(4)::before {
+    content: "数量";
+  }
+
+  .user-table td:nth-child(1)::before {
+    content: "ID";
+  }
+
+  .user-table td:nth-child(2)::before {
+    content: "邮箱";
+  }
+
+  .user-table td:nth-child(3)::before {
+    content: "昵称";
+  }
+
+  .user-table td:nth-child(4)::before {
+    content: "角色";
+  }
+
+  .user-table td:nth-child(5)::before {
+    content: "创建时间";
+  }
+
+  .audit-table td:nth-child(1)::before {
+    content: "时间";
+  }
+
+  .audit-table td:nth-child(2)::before {
+    content: "操作者";
+  }
+
+  .audit-table td:nth-child(3)::before {
+    content: "操作";
+  }
+
+  .audit-table td:nth-child(4)::before {
+    content: "对象";
+  }
+
+  .audit-table td:nth-child(5)::before {
+    content: "详情";
   }
 }

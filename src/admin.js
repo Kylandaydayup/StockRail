@@ -167,7 +167,7 @@ function renderDetail(order) {
     </div>
 
     <h3>入库明细</h3>
-    <table class="admin-table">
+    <table class="admin-table item-table">
       <thead>
         <tr>
           <th>#</th>
@@ -213,7 +213,7 @@ async function renderUsers() {
     return;
   }
   userListNode.innerHTML = `
-    <table class="admin-table">
+    <table class="admin-table user-table">
       <thead>
         <tr>
           <th>ID</th>
