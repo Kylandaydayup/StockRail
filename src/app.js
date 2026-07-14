@@ -88,7 +88,7 @@ collapseAllButton.addEventListener("click", () => {
   const cards = [...itemsNode.querySelectorAll(".item-card")];
   const shouldCollapse = cards.some((card) => !card.classList.contains("is-collapsed"));
   cards.forEach((card) => card.classList.toggle("is-collapsed", shouldCollapse));
-  collapseAllButton.textContent = shouldCollapse ? "⌄ 全部展开" : "⌃ 全部收起";
+  collapseAllButton.textContent = shouldCollapse ? "全部展开" : "全部收起";
   showToast(shouldCollapse ? "已收起全部明细" : "已展开全部明细");
 });
 
@@ -129,10 +129,14 @@ function addItem() {
   card.innerHTML = `
     <div class="item-head">
       <span class="item-index"></span>
+      <div>
+        <strong>入库明细</strong>
+        <p>品牌、奶粉名称和数量均必填</p>
+      </div>
       <div class="item-head-actions">
-        <button type="button" data-action="more">更多</button>
-        <button type="button" data-action="delete">删除</button>
-        <button type="button" data-action="collapse">收起 ︿</button>
+        <button class="button-ghost compact-button" type="button" data-action="more">说明</button>
+        <button class="button-outline compact-button" type="button" data-action="delete">删除</button>
+        <button class="button-secondary compact-button" type="button" data-action="collapse">收起</button>
       </div>
     </div>
     <div class="item-fields">
@@ -149,7 +153,7 @@ function addItem() {
         <input name="quantity" inputmode="numeric" placeholder="请填写数字" />
       </label>
       <p class="item-helper" hidden>品牌和奶粉名称可以直接输入，不需要从固定选项里找。</p>
-      <button type="button" class="add-record" data-action="add">＋ 添加记录</button>
+      <button type="button" class="button-outline add-record" data-action="add">添加记录</button>
     </div>
   `;
   card.addEventListener("click", handleItemAction);
@@ -171,7 +175,7 @@ function handleItemAction(event) {
   if (action === "more") {
     const helper = card.querySelector(".item-helper");
     helper.hidden = !helper.hidden;
-    event.target.textContent = helper.hidden ? "更多" : "收起说明";
+    event.target.textContent = helper.hidden ? "说明" : "收起说明";
   }
   if (action === "delete") {
     if (itemsNode.children.length === 1) {
@@ -186,7 +190,7 @@ function handleItemAction(event) {
   }
   if (action === "collapse") {
     card.classList.toggle("is-collapsed");
-    event.target.textContent = card.classList.contains("is-collapsed") ? "展开 ﹀" : "收起 ︿";
+    event.target.textContent = card.classList.contains("is-collapsed") ? "展开" : "收起";
     updateCollapseAllButton();
   }
 }
@@ -210,8 +214,19 @@ function collectDraft() {
 }
 
 function showErrors(errors) {
+  clearFieldErrors();
   const first = Object.values(errors)[0];
   errorNode.textContent = first;
+  Object.entries(errors).forEach(([fieldName, message]) => {
+    const errorTarget = form.querySelector(`[data-error-for="${fieldName}"]`);
+    const inputTarget = form.querySelector(`[name="${fieldName}"]`);
+    if (errorTarget) {
+      errorTarget.textContent = message;
+    }
+    if (inputTarget) {
+      inputTarget.setAttribute("aria-invalid", "true");
+    }
+  });
   const fieldName = Object.keys(errors)[0];
   const target = form.querySelector(`[name="${fieldName}"]`) ?? itemsNode.querySelector("input");
   target?.focus();
@@ -220,6 +235,12 @@ function showErrors(errors) {
 
 function clearFieldErrors() {
   errorNode.textContent = "";
+  form.querySelectorAll("[data-error-for]").forEach((node) => {
+    node.textContent = "";
+  });
+  form.querySelectorAll("[aria-invalid]").forEach((node) => {
+    node.removeAttribute("aria-invalid");
+  });
 }
 
 function clearItemInputs(card) {
@@ -237,7 +258,7 @@ function renumberItems() {
 function updateCollapseAllButton() {
   const cards = [...itemsNode.querySelectorAll(".item-card")];
   const hasOpenCard = cards.some((card) => !card.classList.contains("is-collapsed"));
-  collapseAllButton.textContent = hasOpenCard ? "⌃ 全部收起" : "⌄ 全部展开";
+  collapseAllButton.textContent = hasOpenCard ? "全部收起" : "全部展开";
 }
 
 function roleLabel(role) {

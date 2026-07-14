@@ -40,28 +40,40 @@
         </section>
 
         <section class="form-section">
-          <label class="field-row">
+          <label class="field-row" data-field="wechatName">
             <span>微信名字</span>
-            <input name="wechatName" placeholder="结账时 能快速的 在微信上找到你" />
+            <div class="field-control">
+              <input name="wechatName" aria-describedby="wechatName-error" placeholder="结账时能快速在微信上找到你" />
+              <p id="wechatName-error" class="field-error" data-error-for="wechatName"></p>
+            </div>
           </label>
 
-          <label class="field-row selectable">
+          <label class="field-row selectable" data-field="deliveryMethod">
             <span>交货方式</span>
-            <select name="deliveryMethod">
-              <option>快递/物流</option>
-              <option>自送</option>
-              <option>同城配送</option>
-            </select>
+            <div class="field-control">
+              <select name="deliveryMethod" aria-describedby="deliveryMethod-error">
+                <option>快递/物流</option>
+                <option>自送</option>
+                <option>同城配送</option>
+              </select>
+              <p id="deliveryMethod-error" class="field-error" data-error-for="deliveryMethod"></p>
+            </div>
           </label>
 
-          <label class="field-row">
+          <label class="field-row" data-field="trackingNumbers">
             <span><b>*</b>快递单号</span>
-            <textarea name="trackingNumbers" rows="2" placeholder="可填写多个快递单号，用/隔开：中通1234/韵达5678"></textarea>
+            <div class="field-control">
+              <textarea name="trackingNumbers" rows="2" aria-describedby="trackingNumbers-error" placeholder="可填写多个快递单号，用/隔开：中通1234/韵达5678"></textarea>
+              <p id="trackingNumbers-error" class="field-error" data-error-for="trackingNumbers"></p>
+            </div>
           </label>
 
-          <label class="field-row">
+          <label class="field-row" data-field="totalBoxes">
             <span><b>*</b>总件数</span>
-            <input name="totalBoxes" inputmode="numeric" placeholder="该单号一共到多少箱的货" />
+            <div class="field-control">
+              <input name="totalBoxes" inputmode="numeric" aria-describedby="totalBoxes-error" placeholder="该单号一共到多少箱的货" />
+              <p id="totalBoxes-error" class="field-error" data-error-for="totalBoxes"></p>
+            </div>
           </label>
         </section>
 
@@ -70,26 +82,35 @@
             <span><b>*</b>入库明细</span>
             <div class="section-actions">
               <button id="quick-add" class="square-button" type="button" aria-label="新增明细">＋</button>
-              <button id="collapse-all" class="light-button" type="button">⌃ 全部收起</button>
+              <button id="collapse-all" class="light-button" type="button">全部收起</button>
             </div>
           </div>
           <div id="items" class="items"></div>
         </section>
 
         <section class="form-section">
-          <label class="field-row muted-row">
+          <label class="field-row muted-row" data-field="totalCans">
             <span>总罐数</span>
-            <input name="totalCans" inputmode="numeric" placeholder="暂无内容" />
+            <div class="field-control">
+              <input name="totalCans" inputmode="numeric" aria-describedby="totalCans-error" placeholder="暂无内容" />
+              <p id="totalCans-error" class="field-error" data-error-for="totalCans"></p>
+            </div>
           </label>
 
-          <label class="field-row">
+          <label class="field-row" data-field="phone">
             <span><b>*</b>联系方式</span>
-            <input name="phone" inputmode="tel" placeholder="请填写手机号码" />
+            <div class="field-control">
+              <input name="phone" inputmode="tel" aria-describedby="phone-error" placeholder="请填写手机号码" />
+              <p id="phone-error" class="field-error" data-error-for="phone"></p>
+            </div>
           </label>
 
-          <label class="field-row">
+          <label class="field-row" data-field="remark">
             <span>备注</span>
-            <textarea name="remark" rows="3" placeholder="备注其他奶粉品类/瘪罐/老日期信息，比如：皇家3-2月/瘪2个"></textarea>
+            <div class="field-control">
+              <textarea name="remark" rows="3" aria-describedby="remark-error" placeholder="备注其他奶粉品类/瘪罐/老日期信息，比如：皇家3-2月/瘪2个"></textarea>
+              <p id="remark-error" class="field-error" data-error-for="remark"></p>
+            </div>
           </label>
         </section>
 
