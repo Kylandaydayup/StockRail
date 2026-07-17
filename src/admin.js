@@ -93,10 +93,10 @@ function renderList(orders) {
       <thead>
         <tr>
           <th>时间</th>
-          <th>微信名字</th>
+          <th>报单人</th>
           <th>方式</th>
-          <th>单号</th>
-          <th>件数</th>
+          <th>地址</th>
+          <th>数量</th>
           <th>罐数</th>
           <th>状态</th>
         </tr>
@@ -159,8 +159,8 @@ function renderDetail(order) {
 
     <div class="detail-grid">
       ${cell("交货方式", order.deliveryMethod)}
-      ${cell("快递单号", order.trackingNumbers)}
-      ${cell("总件数", `${order.totalBoxes} 箱`)}
+      ${cell("快递地址", order.trackingNumbers)}
+      ${cell("数量", order.totalBoxes)}
       ${cell("总罐数", order.totalCans ? `${order.totalCans} 罐` : "未填写")}
       ${cell("联系方式", order.phone)}
       ${cell("备注", order.remark || "无")}

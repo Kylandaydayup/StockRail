@@ -626,8 +626,8 @@ class StockRailApp:
                     order_id,
                     user["id"],
                     "待处理",
-                    text(payload.get("wechatName")),
-                    text(payload.get("deliveryMethod")) or "快递/物流",
+                    display_name(user),
+                    "快递",
                     text(payload.get("trackingNumbers")),
                     int(payload.get("totalBoxes")),
                     int(payload.get("totalCans") or 0),
@@ -641,7 +641,7 @@ class StockRailApp:
                     "insert into order_items(order_id, brand, product, quantity) values(?,?,?,?)",
                     (order_id, text(item.get("brand")), text(item.get("product")), int(item.get("quantity"))),
                 )
-            self.write_audit_log(conn, user, "order.create", "order", order_id, {"wechatName": text(payload.get("wechatName"))})
+            self.write_audit_log(conn, user, "order.create", "order", order_id, {"wechatName": display_name(user)})
         return self.get_order(user, order_id)
 
     def list_orders(self, user, filters=None):
@@ -656,9 +656,9 @@ class StockRailApp:
             clauses.append("orders.status = ?")
             params.append(status)
         delivery_method = text(filters.get("deliveryMethod"))
-        if delivery_method in {"快递/物流", "自送", "同城配送"}:
-            clauses.append("orders.delivery_method = ?")
-            params.append(delivery_method)
+        if delivery_method in {"快递", "快递/物流"}:
+            clauses.append("orders.delivery_method in (?, ?)")
+            params.extend(["快递", "快递/物流"])
         keyword = text(filters.get("keyword"))
         if keyword:
             clauses.append(
@@ -737,12 +737,10 @@ class HTTPError(Exception):
 
 def validate_order(payload):
     errors = {}
-    if not text(payload.get("wechatName")):
-        errors["wechatName"] = "请填写微信名字"
     if not text(payload.get("trackingNumbers")):
-        errors["trackingNumbers"] = "请填写快递单号"
+        errors["trackingNumbers"] = "请填写快递地址"
     if not positive_int(payload.get("totalBoxes")):
-        errors["totalBoxes"] = "请填写总件数"
+        errors["totalBoxes"] = "请填写数量"
     if not text(payload.get("phone")):
         errors["phone"] = "请填写联系方式"
     items = payload.get("items") if isinstance(payload.get("items"), list) else []
@@ -753,6 +751,10 @@ def validate_order(payload):
             errors["items"] = f"请完善第 {index + 1} 条入库明细"
             break
     return errors
+
+
+def display_name(user):
+    return text(row_value(user, "nickname", "")) or text(row_value(user, "username", ""))
 
 
 def serialize_order_summary(row):

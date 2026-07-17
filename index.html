@@ -15,7 +15,7 @@
           <strong>（入库）报单登记</strong>
           <span>stockrail.local</span>
         </div>
-        <a class="admin-link" href="/admin" aria-label="管理员">管理</a>
+        <a id="admin-link" class="admin-link" href="/admin" aria-label="管理员" hidden>管理</a>
       </header>
 
       <form id="order-form" class="report-form" novalidate>
@@ -30,48 +30,33 @@
             <span>换头像</span>
           </label>
         </div>
-        <section id="invite-panel" class="invite-panel">
-          <div>
-            <strong>我的邀请链接</strong>
-            <span id="invite-count">已邀请 0 人</span>
-            <small id="invite-link-text" class="invite-link-text"></small>
+        <section id="profile-menu" class="profile-menu" hidden>
+          <button id="show-invite" class="profile-menu-item" type="button">邀请码</button>
+          <div id="invite-panel" class="invite-panel" hidden>
+            <div>
+              <strong>我的邀请链接</strong>
+              <span id="invite-count">已邀请 0 人</span>
+              <small id="invite-link-text" class="invite-link-text"></small>
+            </div>
+            <button id="copy-invite" type="button">复制邀请链接</button>
           </div>
-          <button id="copy-invite" type="button">复制邀请链接</button>
         </section>
 
         <section class="form-section">
-          <label class="field-row" data-field="wechatName">
-            <span>微信名字</span>
-            <div class="field-control">
-              <input name="wechatName" aria-describedby="wechatName-error" placeholder="结账时能快速在微信上找到你" />
-              <p id="wechatName-error" class="field-error" data-error-for="wechatName"></p>
-            </div>
-          </label>
-
-          <label class="field-row selectable" data-field="deliveryMethod">
-            <span>交货方式</span>
-            <div class="field-control">
-              <select name="deliveryMethod" aria-describedby="deliveryMethod-error">
-                <option>快递/物流</option>
-                <option>自送</option>
-                <option>同城配送</option>
-              </select>
-              <p id="deliveryMethod-error" class="field-error" data-error-for="deliveryMethod"></p>
-            </div>
-          </label>
+          <input name="deliveryMethod" type="hidden" value="快递" />
 
           <label class="field-row" data-field="trackingNumbers">
-            <span><b>*</b>快递单号</span>
+            <span><b>*</b>快递地址</span>
             <div class="field-control">
-              <textarea name="trackingNumbers" rows="2" aria-describedby="trackingNumbers-error" placeholder="可填写多个快递单号，用/隔开：中通1234/韵达5678"></textarea>
+              <textarea name="trackingNumbers" rows="2" aria-describedby="trackingNumbers-error" placeholder="请填写详细收货地址"></textarea>
               <p id="trackingNumbers-error" class="field-error" data-error-for="trackingNumbers"></p>
             </div>
           </label>
 
           <label class="field-row" data-field="totalBoxes">
-            <span><b>*</b>总件数</span>
+            <span><b>*</b>数量</span>
             <div class="field-control">
-              <input name="totalBoxes" inputmode="numeric" aria-describedby="totalBoxes-error" placeholder="该单号一共到多少箱的货" />
+              <input name="totalBoxes" inputmode="numeric" aria-describedby="totalBoxes-error" placeholder="请填写本次快递数量" />
               <p id="totalBoxes-error" class="field-error" data-error-for="totalBoxes"></p>
             </div>
           </label>
@@ -122,7 +107,7 @@
         <div>
           <strong>报单已提交</strong>
           <p>管理员现在可以在订单详情里查看这条记录。</p>
-          <a href="/admin">查看管理员页</a>
+          <a id="success-admin-link" href="/admin" hidden>查看管理员页</a>
           <button type="button" id="new-order">继续报单</button>
         </div>
       </div>

@@ -94,8 +94,8 @@ class StockRailServerTest(unittest.TestCase):
             "/api/orders",
             {
                 "wechatName": "测试小王",
-                "deliveryMethod": "快递/物流",
-                "trackingNumbers": "中通1234",
+                "deliveryMethod": "快递",
+                "trackingNumbers": "上海市浦东新区示例路 88 号",
                 "totalBoxes": 2,
                 "totalCans": 12,
                 "phone": "13800138000",
@@ -111,7 +111,7 @@ class StockRailServerTest(unittest.TestCase):
 
         self.assertEqual(list_response["status"], 200, list_response)
         self.assertEqual(len(list_response["json"]["orders"]), 1)
-        self.assertEqual(list_response["json"]["orders"][0]["wechatName"], "测试小王")
+        self.assertEqual(list_response["json"]["orders"][0]["wechatName"], "member-a")
 
     def test_member_only_reads_own_orders(self):
         root_cookie = self.login("root", "RootPass123!")
@@ -125,8 +125,8 @@ class StockRailServerTest(unittest.TestCase):
             "/api/orders",
             {
                 "wechatName": "A",
-                "deliveryMethod": "快递/物流",
-                "trackingNumbers": "A123",
+                "deliveryMethod": "快递",
+                "trackingNumbers": "上海市浦东新区示例路 89 号",
                 "totalBoxes": 1,
                 "phone": "13800138000",
                 "items": [{"brand": "皇家", "product": "皇家A2", "quantity": 1}],
@@ -352,8 +352,8 @@ class StockRailServerTest(unittest.TestCase):
             "/api/orders",
             {
                 "wechatName": "筛选目标",
-                "deliveryMethod": "自送",
-                "trackingNumbers": "TARGET-001",
+                "deliveryMethod": "快递",
+                "trackingNumbers": "TARGET 示例路 1 号",
                 "totalBoxes": 3,
                 "phone": "13900001111",
                 "items": [{"brand": "皇家", "product": "皇家A2", "quantity": 3}],
@@ -365,7 +365,7 @@ class StockRailServerTest(unittest.TestCase):
             "/api/orders",
             {
                 "wechatName": "普通订单",
-                "deliveryMethod": "快递/物流",
+                "deliveryMethod": "快递",
                 "trackingNumbers": "OTHER-002",
                 "totalBoxes": 1,
                 "phone": "13900002222",
@@ -379,12 +379,12 @@ class StockRailServerTest(unittest.TestCase):
 
         response = self.request(
             "GET",
-            "/api/orders?status=%E6%A0%B8%E5%AF%B9%E4%B8%AD&deliveryMethod=%E8%87%AA%E9%80%81&keyword=TARGET",
+            "/api/orders?status=%E6%A0%B8%E5%AF%B9%E4%B8%AD&deliveryMethod=%E5%BF%AB%E9%80%92&keyword=TARGET",
             cookie=admin_cookie,
         )
 
         self.assertEqual(response["status"], 200, response)
-        self.assertEqual([order["wechatName"] for order in response["json"]["orders"]], ["筛选目标"])
+        self.assertEqual([order["wechatName"] for order in response["json"]["orders"]], ["member-a"])
 
     def test_wechat_login_endpoint_is_removed(self):
         response = self.request(

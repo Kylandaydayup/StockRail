@@ -326,16 +326,42 @@ a {
   object-fit: cover;
 }
 
+.profile-menu {
+  margin: -6px 20px 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--card);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.profile-menu[hidden],
+.invite-panel[hidden] {
+  display: none;
+}
+
+.profile-menu-item {
+  width: 100%;
+  min-height: 44px;
+  justify-content: flex-start;
+  border: 0;
+  border-radius: 0;
+  padding: 0 14px;
+  background: var(--card);
+  color: var(--foreground);
+  font-size: 14px;
+  font-weight: 650;
+}
+
 .invite-panel {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin: 0 20px 18px;
+  margin: 0;
   padding: 14px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  background: var(--card);
+  border-top: 1px solid var(--border);
+  background: var(--muted);
 }
 
 .invite-panel strong,
@@ -1155,7 +1181,7 @@ a {
   }
 
   .order-table td:nth-child(2)::before {
-    content: "微信名字";
+    content: "报单人";
   }
 
   .order-table td:nth-child(3)::before {
@@ -1163,11 +1189,11 @@ a {
   }
 
   .order-table td:nth-child(4)::before {
-    content: "单号";
+    content: "地址";
   }
 
   .order-table td:nth-child(5)::before {
-    content: "件数";
+    content: "数量";
   }
 
   .order-table td:nth-child(6)::before {

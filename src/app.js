@@ -10,8 +10,12 @@ const newOrderButton = document.querySelector("#new-order");
 const collapseAllButton = document.querySelector("#collapse-all");
 const quickAddButton = document.querySelector("#quick-add");
 const currentUserButton = document.querySelector("#current-user");
+const adminLink = document.querySelector("#admin-link");
+const successAdminLink = document.querySelector("#success-admin-link");
 const avatarFileInput = document.querySelector("#avatar-file");
 const closePageButton = document.querySelector("#close-page");
+const profileMenu = document.querySelector("#profile-menu");
+const showInviteButton = document.querySelector("#show-invite");
 const invitePanel = document.querySelector("#invite-panel");
 const inviteCountNode = document.querySelector("#invite-count");
 const inviteLinkTextNode = document.querySelector("#invite-link-text");
@@ -23,8 +27,10 @@ let toastTimer = 0;
 const currentUser = await requireSession(["member", "admin", "superadmin"]);
 if (currentUser) {
   currentUserButton.innerHTML = userBadge(currentUser);
+  const canManageOrders = ["admin", "superadmin"].includes(currentUser.role);
+  adminLink.hidden = !canManageOrders;
+  successAdminLink.hidden = !canManageOrders;
   addItem();
-  loadInvite();
 }
 
 closePageButton.addEventListener("click", () => {
@@ -32,7 +38,13 @@ closePageButton.addEventListener("click", () => {
 });
 
 currentUserButton.addEventListener("click", () => {
-  showToast(`${currentUser.nickname || currentUser.username}，当前身份：${roleLabel(currentUser.role)}`);
+  profileMenu.hidden = !profileMenu.hidden;
+});
+
+showInviteButton.addEventListener("click", async () => {
+  if (await loadInvite()) {
+    invitePanel.hidden = false;
+  }
 });
 
 avatarFileInput.addEventListener("change", async () => {
@@ -134,7 +146,6 @@ function addItem() {
         <p>品牌、奶粉名称和数量均必填</p>
       </div>
       <div class="item-head-actions">
-        <button class="button-ghost compact-button" type="button" data-action="more">说明</button>
         <button class="button-outline compact-button" type="button" data-action="delete">删除</button>
         <button class="button-secondary compact-button" type="button" data-action="collapse">收起</button>
       </div>
@@ -152,7 +163,6 @@ function addItem() {
         <span><b>*</b>数量</span>
         <input name="quantity" inputmode="numeric" placeholder="请填写数字" />
       </label>
-      <p class="item-helper" hidden>品牌和奶粉名称可以直接输入，不需要从固定选项里找。</p>
       <button type="button" class="button-outline add-record" data-action="add">添加记录</button>
     </div>
   `;
@@ -171,11 +181,6 @@ function handleItemAction(event) {
   if (action === "add") {
     addItem();
     showToast("已新增 1 条入库明细");
-  }
-  if (action === "more") {
-    const helper = card.querySelector(".item-helper");
-    helper.hidden = !helper.hidden;
-    event.target.textContent = helper.hidden ? "说明" : "收起说明";
   }
   if (action === "delete") {
     if (itemsNode.children.length === 1) {
@@ -198,8 +203,8 @@ function handleItemAction(event) {
 function collectDraft() {
   const data = new FormData(form);
   return {
-    wechatName: data.get("wechatName"),
-    deliveryMethod: data.get("deliveryMethod"),
+    wechatName: currentUser.nickname || currentUser.username,
+    deliveryMethod: "快递",
     trackingNumbers: data.get("trackingNumbers"),
     totalBoxes: data.get("totalBoxes"),
     totalCans: data.get("totalCans"),
@@ -283,8 +288,14 @@ async function loadInvite() {
     inviteCountNode.textContent = `已邀请 ${invite.inviteCount || 0} 人`;
     copyInviteButton.dataset.link = invite.inviteLink;
     inviteLinkTextNode.textContent = invite.inviteLink;
+    return true;
   } catch {
     invitePanel.hidden = true;
+    inviteCountNode.textContent = "已邀请 0 人";
+    copyInviteButton.dataset.link = "";
+    inviteLinkTextNode.textContent = "";
+    showToast("邀请码加载失败，请稍后重试");
+    return false;
   }
 }
 

@@ -25,9 +25,7 @@ async function createUser(page, email: string, password: string, role: 'member' 
 }
 
 async function fillValidReport(page, suffix = Date.now().toString()) {
-  await page.locator('input[name="wechatName"]').fill(`测试用户${suffix}`);
-  await page.locator('select[name="deliveryMethod"]').selectOption('快递/物流');
-  await page.locator('textarea[name="trackingNumbers"]').fill(`中通${suffix}`);
+  await page.locator('textarea[name="trackingNumbers"]').fill(`上海市浦东新区示例路 ${suffix} 号`);
   await page.locator('input[name="totalBoxes"]').fill('2');
   await page.locator('.item-card').first().locator('input[name="brand"]').fill('皇家');
   await page.locator('.item-card').first().locator('input[name="product"]').fill('皇家A2');
@@ -48,11 +46,21 @@ test.describe('StockRail redesigned flows', () => {
 
     await login(page, memberEmail, memberPassword);
     await expect(page).toHaveURL(/\/$/);
+    await expect(page.locator('#admin-link')).toBeHidden();
+    await expect(page.locator('input[name="wechatName"]')).toHaveCount(0);
+    await expect(page.locator('select[name="deliveryMethod"]')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: '说明' })).toHaveCount(0);
+    await expect(page.locator('#invite-panel')).toBeHidden();
+    await page.locator('#current-user').click();
+    await expect(page.getByRole('button', { name: '邀请码' })).toBeVisible();
+    await page.getByRole('button', { name: '邀请码' }).click();
+    await expect(page.locator('#invite-panel')).toBeVisible();
+    await expect(page.locator('#invite-link-text')).toContainText('/login?invite=');
 
     await page.getByRole('button', { name: '提交报单' }).click();
-    await expect(page.locator('#form-error')).toContainText('请填写微信名字');
-    await expect(page.locator('[data-error-for="wechatName"]')).toContainText('请填写微信名字');
-    await expect(page.locator('input[name="wechatName"]')).toBeFocused();
+    await expect(page.locator('#form-error')).toContainText('请填写快递地址');
+    await expect(page.locator('[data-error-for="trackingNumbers"]')).toContainText('请填写快递地址');
+    await expect(page.locator('textarea[name="trackingNumbers"]')).toBeFocused();
 
     await fillValidReport(page);
     await page.getByRole('button', { name: '提交报单' }).click();
@@ -76,13 +84,15 @@ test.describe('StockRail redesigned flows', () => {
 
     await page.goto('/login');
     await login(page, adminUser, adminPassword);
+    await page.goto('/');
+    await expect(page.locator('#admin-link')).toBeVisible();
     await page.goto('/admin');
-    await page.locator('input[name="keyword"]').fill(`中通${orderSuffix}`);
+    await page.locator('input[name="keyword"]').fill(`示例路 ${orderSuffix}`);
     await page.getByRole('button', { name: '筛选' }).click();
-    await expect(page.locator('#order-list')).toContainText(`测试用户${orderSuffix}`);
+    await expect(page.locator('#order-list')).toContainText(memberEmail);
 
     await page.locator('#order-list tr[data-id]').first().click();
-    await expect(page.locator('#order-detail')).toContainText(`测试用户${orderSuffix} 的入库报单`);
+    await expect(page.locator('#order-detail')).toContainText(`${memberEmail} 的入库报单`);
     await page.getByRole('button', { name: '标记核对中' }).click();
     await expect(page.locator('#order-detail')).toContainText('核对中');
     await page.getByRole('button', { name: '标记已入库' }).click();

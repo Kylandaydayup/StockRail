@@ -2,14 +2,11 @@ const STORAGE_KEY = "stockrail.orders.v1";
 
 export function validateOrder(draft) {
   const errors = {};
-  if (!text(draft.wechatName)) {
-    errors.wechatName = "请填写微信名字";
-  }
   if (!text(draft.trackingNumbers)) {
-    errors.trackingNumbers = "请填写快递单号";
+    errors.trackingNumbers = "请填写快递地址";
   }
   if (!positiveNumber(draft.totalBoxes)) {
-    errors.totalBoxes = "请填写总件数";
+    errors.totalBoxes = "请填写数量";
   }
   if (!text(draft.phone)) {
     errors.phone = "请填写联系方式";
@@ -91,7 +88,7 @@ function normalizeOrder(draft, id, createdAt) {
     status: "待处理",
     createdAt: createdAt.toISOString(),
     wechatName: text(draft.wechatName),
-    deliveryMethod: text(draft.deliveryMethod) || "快递/物流",
+    deliveryMethod: "快递",
     trackingNumbers: text(draft.trackingNumbers),
     totalBoxes: Number(draft.totalBoxes),
     totalCans: numberOrZero(draft.totalCans),

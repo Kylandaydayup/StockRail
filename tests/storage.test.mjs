@@ -23,9 +23,7 @@ function memoryStorage() {
 }
 
 const validDraft = {
-  wechatName: "小王",
-  deliveryMethod: "快递/物流",
-  trackingNumbers: "中通1234/韵达5678",
+  trackingNumbers: "上海市浦东新区示例路 88 号",
   totalBoxes: "3",
   phone: "13800138000",
   totalCans: "18",
@@ -46,16 +44,14 @@ const validDraft = {
 
 test("validateOrder returns field errors for missing required data", () => {
   const errors = validateOrder({
-    wechatName: "",
     trackingNumbers: "",
     totalBoxes: "",
     phone: "",
     items: [{ brand: "", product: "", quantity: "" }]
   });
 
-  assert.equal(errors.wechatName, "请填写微信名字");
-  assert.equal(errors.trackingNumbers, "请填写快递单号");
-  assert.equal(errors.totalBoxes, "请填写总件数");
+  assert.equal(errors.trackingNumbers, "请填写快递地址");
+  assert.equal(errors.totalBoxes, "请填写数量");
   assert.equal(errors.phone, "请填写联系方式");
   assert.equal(errors.items, "请完善第 1 条入库明细");
 });
@@ -71,6 +67,9 @@ test("createOrder persists normalized orders newest first", () => {
 
   assert.equal(order.id, "order-1");
   assert.equal(order.status, "待处理");
+  assert.equal(order.wechatName, "");
+  assert.equal(order.deliveryMethod, "快递");
+  assert.equal(order.trackingNumbers, "上海市浦东新区示例路 88 号");
   assert.equal(order.totalBoxes, 3);
   assert.equal(order.totalCans, 18);
   assert.equal(order.items[0].quantity, 12);
